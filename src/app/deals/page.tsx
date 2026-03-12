@@ -1,11 +1,5 @@
-import dynamic from "next/dynamic";
-
-// @hello-pangea/dnd requires client-only rendering
-const DealsKanban = dynamic(
-  () => import("@/components/deals/deals-kanban"),
-  { ssr: false }
-);
+import DealsKanbanClient from "@/components/deals/deals-kanban-client";
 
 export default function DealsPage() {
-  return <DealsKanban />;
+  return <DealsKanbanClient />;
 }
