@@ -5,17 +5,20 @@ import { cn } from "@/lib/utils";
 export default function DealCard({
   deal,
   isDragging,
+  isDimmed,
 }: {
   deal: Deal;
   isDragging?: boolean;
+  isDimmed?: boolean;
 }) {
   const contact = getContactById(deal.contactId);
 
   return (
     <div
       className={cn(
-        "rounded-lg border border-zinc-200 bg-white p-3 transition-shadow",
-        isDragging ? "shadow-xl ring-2 ring-indigo-400" : "shadow-sm hover:shadow-md"
+        "rounded-lg border border-zinc-200 bg-white p-3 transition-all",
+        isDragging ? "shadow-xl ring-2 ring-indigo-400" : "shadow-sm hover:shadow-md",
+        isDimmed && "opacity-30"
       )}
     >
       <p className="mb-1 text-sm font-medium leading-snug text-zinc-900">

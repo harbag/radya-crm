@@ -40,9 +40,10 @@ const STAGE_COLORS: Record<
 type Props = {
   stage: { id: DealStage; label: string };
   deals: Deal[];
+  matchedIds?: Set<string> | null;
 };
 
-export default function KanbanColumn({ stage, deals }: Props) {
+export default function KanbanColumn({ stage, deals, matchedIds }: Props) {
   const colors = STAGE_COLORS[stage.id];
   const total = deals.reduce((s, d) => s + d.value, 0);
 
@@ -91,7 +92,11 @@ export default function KanbanColumn({ stage, deals }: Props) {
                       snapshot.isDragging ? "opacity-90" : "opacity-100"
                     )}
                   >
-                    <DealCard deal={deal} isDragging={snapshot.isDragging} />
+                    <DealCard
+                      deal={deal}
+                      isDragging={snapshot.isDragging}
+                      isDimmed={matchedIds != null && !matchedIds.has(deal.id)}
+                    />
                   </div>
                 )}
               </Draggable>
