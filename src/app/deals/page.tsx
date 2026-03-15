@@ -1,5 +1,9 @@
-import DealsKanbanClient from "@/components/deals/deals-kanban-client";
+"use client";
+
+import DealsView from "@/components/deals/deals-view";
+import { useDetailPanelStore } from "@/store/use-detail-panel-store";
 
 export default function DealsPage() {
-  return <DealsKanbanClient />;
+  const openDetail = useDetailPanelStore((s) => s.open);
+  return <DealsView onRowClick={(row) => openDetail("deal", row.id)} />;
 }

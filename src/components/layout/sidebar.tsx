@@ -2,12 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, KanbanSquare } from "lucide-react";
+import {
+  Users,
+  KanbanSquare,
+  Building2,
+  Target,
+  CheckSquare,
+  LayoutDashboard,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/contacts", label: "Contacts", icon: Users },
+  { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/leads", label: "Leads", icon: Target },
   { href: "/deals", label: "Deals Pipeline", icon: KanbanSquare },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare },
 ];
 
 export default function Sidebar() {
@@ -21,7 +32,9 @@ export default function Sidebar() {
           <span className="text-xs font-bold text-white">R</span>
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-100 truncate">Radya CRM</p>
+          <p className="text-sm font-semibold text-zinc-100 truncate">
+            Radya CRM
+          </p>
           <p className="text-xs text-zinc-500 truncate">Radya Group</p>
         </div>
       </div>
@@ -34,7 +47,9 @@ export default function Sidebar() {
         <nav className="px-2 space-y-0.5">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const isActive =
-              pathname === href || pathname.startsWith(href + "/");
+              href === "/"
+                ? pathname === "/"
+                : pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}
