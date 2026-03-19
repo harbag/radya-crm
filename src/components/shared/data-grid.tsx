@@ -47,6 +47,13 @@ export type FilterOption = {
   options: { value: string; label: string }[];
 };
 
+export type RowAction<T> = {
+  label: string;
+  icon?: LucideIcon;
+  onClick: (row: T) => void;
+  className?: string;
+};
+
 type DataGridProps<T extends { id: string }> = {
   data: T[];
   columns: ColumnDef<T, any>[];
@@ -60,6 +67,7 @@ type DataGridProps<T extends { id: string }> = {
   filterOptions?: FilterOption[];
   toolbarExtra?: React.ReactNode;
   addLabel?: string;
+  rowActions?: RowAction<T>[];
 };
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -76,6 +84,7 @@ export default function DataGrid<T extends { id: string }>({
   filterOptions = [],
   toolbarExtra,
   addLabel,
+  rowActions = [],
 }: DataGridProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -137,6 +146,19 @@ export default function DataGrid<T extends { id: string }>({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {rowActions.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <DropdownMenuItem
+                  key={action.label}
+                  className={cn("cursor-pointer", action.className)}
+                  onClick={() => action.onClick(row.original)}
+                >
+                  {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                  {action.label}
+                </DropdownMenuItem>
+              );
+            })}
             <DropdownMenuItem
               className="text-destructive focus:text-destructive cursor-pointer"
               onClick={() => onDelete([row.original.id])}

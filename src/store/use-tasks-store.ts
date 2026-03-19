@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { TASKS, type Task, type TaskStatus } from "@/lib/mock-data";
+import { useActivitiesStore } from "./use-activities-store";
 
 type TasksState = {
   tasks: Task[];
@@ -47,18 +48,29 @@ export const useTasksStore = create<TasksState>((set) => ({
     })),
 
   toggleTaskStatus: (id) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => {
-        if (t.id !== id) return t;
-        const next: TaskStatus =
-          t.status === "todo"
-            ? "in_progress"
-            : t.status === "in_progress"
-              ? "done"
-              : "todo";
-        return { ...t, status: next };
-      }),
-    })),
+    set((state) => {
+      const task = state.tasks.find((t) => t.id === id);
+      if (!task) return state;
+      const next: TaskStatus =
+        task.status === "todo"
+          ? "in_progress"
+          : task.status === "in_progress"
+            ? "done"
+            : "todo";
+      if (next === "done" && task.linkedEntityType && task.linkedEntityId) {
+        useActivitiesStore.getState().addActivity({
+          type: "task_completed",
+          description: `Task "${task.title}" completed`,
+          linkedEntityType: task.linkedEntityType,
+          linkedEntityId: task.linkedEntityId,
+        });
+      }
+      return {
+        tasks: state.tasks.map((t) =>
+          t.id === id ? { ...t, status: next } : t
+        ),
+      };
+    }),
 
   moveTaskStatus: (taskId, newStatus, newIndex) =>
     set((state) => {

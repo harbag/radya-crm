@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/leads", label: "Leads", icon: Target },
-  { href: "/deals", label: "Deals Pipeline", icon: KanbanSquare },
+  { href: "/deals", label: "Deals", icon: KanbanSquare },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
 ];
 

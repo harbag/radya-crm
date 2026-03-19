@@ -2,8 +2,8 @@
 
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Target } from "lucide-react";
-import DataGrid, { type FilterOption } from "@/components/shared/data-grid";
+import { Target, ArrowRightLeft } from "lucide-react";
+import DataGrid, { type FilterOption, type RowAction } from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   createStatusBadgeCell,
@@ -14,6 +14,8 @@ import {
 import { useLeadsStore } from "@/store/use-leads-store";
 import { useContactsStore } from "@/store/use-contacts-store";
 import { useCompaniesStore } from "@/store/use-companies-store";
+import { useDealsStore } from "@/store/use-deals-store";
+import { useActivitiesStore } from "@/store/use-activities-store";
 import {
   LEAD_STATUS_CONFIG,
   LEAD_SOURCE_CONFIG,
@@ -44,9 +46,11 @@ export default function LeadsGrid({
   onRowClick?: (row: Lead) => void;
   toolbarExtra?: React.ReactNode;
 }) {
-  const { leads, addLead, updateLead, deleteLeads } = useLeadsStore();
+  const { leads, addLead, updateLead, deleteLeads, markConverted } = useLeadsStore();
   const { contacts } = useContactsStore();
   const { companies } = useCompaniesStore();
+  const { addDeal } = useDealsStore();
+  const { addActivity } = useActivitiesStore();
 
   const ContactCell = createRelationCell<Lead>(
     () => contacts.map((c) => ({ id: c.id, name: c.name })),
@@ -56,6 +60,28 @@ export default function LeadsGrid({
     () => companies.map((c) => ({ id: c.id, name: c.name })),
     "companyId"
   );
+
+  function handleConvertToDeal(lead: Lead) {
+    const dealId = addDeal({
+      title: lead.title,
+      value: lead.estimatedValue,
+      contactId: lead.contactId ?? "",
+      companyId: lead.companyId,
+      stage: "prospecting",
+      probability: 20,
+      expectedCloseDate: new Date(Date.now() + 90 * 86400000)
+        .toISOString()
+        .split("T")[0],
+      notes: lead.notes,
+    });
+    addActivity({
+      type: "deal_created",
+      description: `Lead "${lead.title}" converted to deal`,
+      linkedEntityType: "deal",
+      linkedEntityId: dealId,
+    });
+    markConverted(lead.id);
+  }
 
   const columns: ColumnDef<Lead, any>[] = [
     {
@@ -133,6 +159,14 @@ export default function LeadsGrid({
     },
   ];
 
+  const rowActions: RowAction<Lead>[] = [
+    {
+      label: "Convert to Deal",
+      icon: ArrowRightLeft,
+      onClick: handleConvertToDeal,
+    },
+  ];
+
   return (
     <DataGrid<Lead>
       data={leads}
@@ -157,6 +191,7 @@ export default function LeadsGrid({
       filterOptions={filterOptions}
       toolbarExtra={toolbarExtra}
       addLabel="Add Lead"
+      rowActions={rowActions}
     />
   );
 }

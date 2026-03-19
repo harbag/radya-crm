@@ -11,7 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import EntityHeader from "./detail-sections/entity-header";
-import ActivityFeed from "./detail-sections/activity-feed";
+import Timeline from "./detail-sections/timeline";
 import LinkedTasks from "./detail-sections/linked-tasks";
 import LinkedNotes from "./detail-sections/linked-notes";
 import LinkedDeals from "./detail-sections/linked-deals";
@@ -45,9 +45,10 @@ function EntityDetailContent({
   const { companies } = useCompaniesStore();
   const { deals } = useDealsStore();
   const { leads } = useLeadsStore();
-  const { tasks, toggleTaskStatus } = useTasksStore();
+  const { tasks, toggleTaskStatus, addTask } = useTasksStore();
   const { notes, addNote } = useNotesStore();
   const { activities } = useActivitiesStore();
+  const { addActivity } = useActivitiesStore();
 
   const linkedTasks = getLinkedTasks(tasks, entityType, entityId);
   const linkedNotes = getLinkedNotes(notes, entityType, entityId);
@@ -161,10 +162,44 @@ function EntityDetailContent({
     );
   }
 
+  const handleAddNote = (content: string) => {
+    addNote({
+      content,
+      linkedEntityType: entityType,
+      linkedEntityId: entityId,
+    });
+    addActivity({
+      type: "note_added",
+      description: `Note added to ${entityType} "${name}"`,
+      linkedEntityType: entityType,
+      linkedEntityId: entityId,
+    });
+  };
+
+  const handleAddTask = (title: string) => {
+    addTask({
+      title,
+      description: "",
+      status: "todo",
+      priority: "medium",
+      dueDate: null,
+      linkedEntityType: entityType,
+      linkedEntityId: entityId,
+      assignee: "",
+    });
+    addActivity({
+      type: "note_added",
+      description: `Task "${title}" added to ${entityType} "${name}"`,
+      linkedEntityType: entityType,
+      linkedEntityId: entityId,
+    });
+  };
+
   // Build tab list
+  const timelineCount = linkedActivities.length + linkedNotes.length + linkedTasks.length;
   const tabs = [
     { id: "overview", label: "Overview" },
-    { id: "activity", label: "Activity" },
+    { id: "timeline", label: `Timeline (${timelineCount})` },
     { id: "tasks", label: `Tasks (${linkedTasks.length})` },
     { id: "notes", label: `Notes (${linkedNotes.length})` },
   ];
@@ -192,9 +227,9 @@ function EntityDetailContent({
       </SheetHeader>
 
       <Tabs defaultValue="overview" className="mt-4 flex flex-1 flex-col overflow-hidden">
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full justify-start overflow-x-auto">
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="text-xs">
+            <TabsTrigger key={tab.id} value={tab.id} className="text-xs shrink-0">
               {tab.label}
             </TabsTrigger>
           ))}
@@ -205,27 +240,29 @@ function EntityDetailContent({
             {overviewContent}
           </TabsContent>
 
-          <TabsContent value="activity" className="m-0">
-            <ActivityFeed activities={linkedActivities} />
+          <TabsContent value="timeline" className="m-0">
+            <Timeline
+              activities={linkedActivities}
+              notes={linkedNotes}
+              tasks={linkedTasks}
+              onAddNote={handleAddNote}
+              onAddTask={handleAddTask}
+              onToggleTask={toggleTaskStatus}
+            />
           </TabsContent>
 
           <TabsContent value="tasks" className="m-0">
             <LinkedTasks
               tasks={linkedTasks}
               onToggle={toggleTaskStatus}
+              onAdd={handleAddTask}
             />
           </TabsContent>
 
           <TabsContent value="notes" className="m-0">
             <LinkedNotes
               notes={linkedNotes}
-              onAdd={(content) =>
-                addNote({
-                  content,
-                  linkedEntityType: entityType,
-                  linkedEntityId: entityId,
-                })
-              }
+              onAdd={handleAddNote}
             />
           </TabsContent>
 

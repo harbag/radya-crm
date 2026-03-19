@@ -68,7 +68,7 @@ export default function DealsView({
       <div className="flex h-full flex-col bg-white">
         <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
           <h1 className="text-base font-semibold text-zinc-900">
-            Deals Pipeline
+            Deals
           </h1>
           {viewSwitcher}
         </div>
@@ -99,7 +99,7 @@ export default function DealsView({
       <div className="flex h-full flex-col bg-white">
         <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
           <h1 className="text-base font-semibold text-zinc-900">
-            Deals Pipeline
+            Deals
           </h1>
           {viewSwitcher}
         </div>

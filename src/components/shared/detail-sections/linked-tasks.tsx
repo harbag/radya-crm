@@ -1,10 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "@/lib/mock-data";
-import { CheckCircle, Circle, Loader2 } from "lucide-react";
+import { CheckCircle, Circle, Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const STATUS_ICONS = {
   todo: Circle,
@@ -15,18 +17,77 @@ const STATUS_ICONS = {
 export default function LinkedTasks({
   tasks,
   onToggle,
+  onAdd,
 }: {
   tasks: Task[];
   onToggle?: (taskId: string) => void;
+  onAdd?: (title: string) => void;
 }) {
-  if (tasks.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-zinc-400">No tasks</p>
-    );
+  const [showForm, setShowForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  function handleSubmit() {
+    if (!newTitle.trim() || !onAdd) return;
+    onAdd(newTitle.trim());
+    setNewTitle("");
+    setShowForm(false);
   }
 
   return (
     <div className="space-y-2">
+      {onAdd && (
+        <div className="mb-3">
+          {showForm ? (
+            <div className="space-y-2">
+              <Input
+                placeholder="Task title..."
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                  if (e.key === "Escape") {
+                    setShowForm(false);
+                    setNewTitle("");
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSubmit} className="text-xs">
+                  Add Task
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowForm(false);
+                    setNewTitle("");
+                  }}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowForm(true)}
+              className="gap-1.5 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Task
+            </Button>
+          )}
+        </div>
+      )}
+
+      {tasks.length === 0 && !showForm && (
+        <p className="py-8 text-center text-sm text-zinc-400">No tasks</p>
+      )}
+
       {tasks.map((task) => {
         const StatusIcon = STATUS_ICONS[task.status];
         const priorityConfig = TASK_PRIORITY_CONFIG[task.priority];
