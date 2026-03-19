@@ -46,7 +46,7 @@ export default function KanbanBoard<T extends { id: string }>({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex h-full gap-4 overflow-x-auto p-4">
+      <div className="flex h-full gap-3 overflow-x-auto p-3 sm:gap-4 sm:p-4">
         {stages.map((stage) => {
           const items = data.filter((item) => getStage(item) === stage.id);
           const colors = stageColors[stage.id] ?? {
@@ -56,7 +56,7 @@ export default function KanbanBoard<T extends { id: string }>({
           };
 
           return (
-            <div key={stage.id} className="flex w-[272px] shrink-0 flex-col">
+            <div key={stage.id} className="flex w-[240px] shrink-0 flex-col sm:w-[272px]">
               {/* Column header */}
               <div className="mb-2 flex items-center justify-between px-1 py-1">
                 <div className="flex items-center gap-2">

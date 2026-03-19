@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Sidebar from "@/components/layout/sidebar";
+import { DesktopSidebar, MobileSidebar, MobileTopBar } from "@/components/layout/sidebar";
 import EntityDetailPanel from "@/components/shared/entity-detail-panel";
 import AIChatPanel from "@/components/layout/ai-chat-panel";
 import "./globals.css";
@@ -18,8 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar />
+          <DesktopSidebar />
+          <MobileSidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
+            <MobileTopBar />
             {children}
           </div>
         </div>

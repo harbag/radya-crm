@@ -192,9 +192,9 @@ export default function DataGrid<T extends { id: string }>({
   return (
     <div className="flex h-full flex-col bg-white">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
         <div className="flex items-center gap-2">
-          <h1 className="text-base font-semibold text-zinc-900">
+          <h1 className="text-sm font-semibold text-zinc-900 sm:text-base">
             {entityName}
           </h1>
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
@@ -202,7 +202,7 @@ export default function DataGrid<T extends { id: string }>({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {toolbarExtra}
 
           {/* Global search */}
@@ -212,11 +212,11 @@ export default function DataGrid<T extends { id: string }>({
               placeholder="Search..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="h-8 w-44 pl-8 text-xs"
+              className="h-8 w-32 pl-8 text-xs sm:w-44"
             />
           </div>
 
-          {/* Filter dropdowns */}
+          {/* Filter dropdowns - hidden on mobile */}
           {filterOptions.map((filter) => {
             const activeValue =
               (columnFilters.find((f) => f.id === filter.id)
@@ -227,7 +227,7 @@ export default function DataGrid<T extends { id: string }>({
                 value={activeValue}
                 onValueChange={(val) => handleFilterChange(filter.id, val)}
               >
-                <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectTrigger className="hidden h-8 w-36 text-xs sm:inline-flex">
                   <SelectValue placeholder={filter.label} />
                 </SelectTrigger>
                 <SelectContent>
@@ -251,7 +251,7 @@ export default function DataGrid<T extends { id: string }>({
               className="h-8 gap-1.5 text-xs"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete {selectedRows.length}
+              <span className="hidden sm:inline">Delete</span> {selectedRows.length}
             </Button>
           )}
 
@@ -269,7 +269,7 @@ export default function DataGrid<T extends { id: string }>({
               className="h-8 gap-1.5 text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              {addLabel ?? `Add ${entityName.replace(/s$/, "")}`}
+              <span className="hidden sm:inline">{addLabel ?? `Add ${entityName.replace(/s$/, "")}`}</span>
             </Button>
           )}
         </div>

@@ -75,9 +75,10 @@ export default function AIChatPanel() {
       {/* Panel */}
       <div
         className={cn(
-          "fixed bottom-6 right-20 z-40 flex w-96 flex-col rounded-xl border border-zinc-200 bg-white shadow-2xl transition-all duration-300",
+          "fixed z-40 flex flex-col rounded-xl border border-zinc-200 bg-white shadow-2xl transition-all duration-300",
+          "bottom-20 right-3 left-3 h-[70vh] sm:bottom-6 sm:left-auto sm:right-20 sm:h-[520px] sm:w-96",
           isOpen
-            ? "translate-y-0 opacity-100 h-[520px]"
+            ? "translate-y-0 opacity-100"
             : "translate-y-4 opacity-0 pointer-events-none h-0"
         )}
       >

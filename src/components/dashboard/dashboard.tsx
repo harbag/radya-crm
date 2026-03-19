@@ -53,19 +53,19 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 sm:px-6 sm:py-4">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Dashboard</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-base font-semibold text-zinc-900 sm:text-lg">Dashboard</h1>
+          <p className="hidden text-sm text-zinc-500 sm:block">
             Overview of your sales pipeline and CRM activity
           </p>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
+        <div className="p-3 space-y-4 sm:p-6 sm:space-y-6">
           {/* Stat cards */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
             <StatCard
               label="Pipeline"
               value={formatCurrency(totalPipeline)}
