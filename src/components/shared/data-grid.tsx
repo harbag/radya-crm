@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useReactTable,
   getCoreRowModel,
@@ -95,7 +96,9 @@ export default function DataGrid<T extends { id: string }>({
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<EditingCell | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialCharRef = useRef<string | null>(null);
+  const prevRowCountRef = useRef<number>(0);
 
   // Derive navigable column IDs from user columns
   const userColumnIds = useMemo(
@@ -227,6 +230,31 @@ export default function DataGrid<T extends { id: string }>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table.getRowModel().rows]
   );
+
+  // ── Row virtualization ──────────────────────────────────────────────────
+
+  const rows = table.getRowModel().rows;
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+  const totalHeight = virtualizer.getTotalSize();
+  const allColumnCount = table.getAllColumns().length;
+
+  // Scroll to new row when added
+  useEffect(() => {
+    if (rows.length > prevRowCountRef.current && rows.length > 0) {
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(rows.length - 1, { align: "end" });
+      });
+    }
+    prevRowCountRef.current = rows.length;
+  }, [rows.length, virtualizer]);
 
   // ── Navigation helpers ──────────────────────────────────────────────────
 
@@ -395,11 +423,17 @@ export default function DataGrid<T extends { id: string }>({
 
   useEffect(() => {
     if (!selectedCell) return;
-    const td = tableRef.current?.querySelector(
-      `[data-row="${selectedCell.rowId}"][data-col="${selectedCell.columnId}"]`
-    ) as HTMLElement | null;
-    td?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [selectedCell]);
+    const rowIndex = rows.findIndex((r) => r.id === selectedCell.rowId);
+    if (rowIndex >= 0) {
+      virtualizer.scrollToIndex(rowIndex, { align: "auto" });
+      requestAnimationFrame(() => {
+        const td = tableRef.current?.querySelector(
+          `[data-row="${selectedCell.rowId}"][data-col="${selectedCell.columnId}"]`
+        ) as HTMLElement | null;
+        td?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    }
+  }, [selectedCell, rows, virtualizer]);
 
   // ── Clear selection if selected row is no longer visible ────────────────
 
@@ -528,7 +562,7 @@ export default function DataGrid<T extends { id: string }>({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto">
         <table
           ref={tableRef}
           tabIndex={0}
@@ -592,75 +626,102 @@ export default function DataGrid<T extends { id: string }>({
           </thead>
 
           <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  "group border-b border-zinc-100 transition-colors",
-                  row.getIsSelected() ? "bg-indigo-50" : "hover:bg-zinc-50/70",
-                  onRowClick && "cursor-pointer"
-                )}
-                style={{ height: 36 }}
-                onClick={() => onRowClick?.(row.original)}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const isEditing =
-                    editingCell?.rowId === row.id &&
-                    editingCell?.columnId === cell.column.id;
-                  const isSelected =
-                    selectedCell?.rowId === row.id &&
-                    selectedCell?.columnId === cell.column.id;
-                  const isSystemCol = SYSTEM_COLS.has(cell.column.id);
+            {/* Top spacer for virtualization */}
+            {virtualRows.length > 0 && virtualRows[0].start > 0 && (
+              <tr>
+                <td
+                  colSpan={allColumnCount}
+                  style={{ height: virtualRows[0].start, padding: 0, border: "none" }}
+                />
+              </tr>
+            )}
 
-                  return (
-                    <td
-                      key={cell.id}
-                      data-row={row.id}
-                      data-col={cell.column.id}
-                      className={cn(
-                        "h-9 overflow-hidden border-r border-zinc-100 p-0",
-                        isEditing && "ring-2 ring-inset ring-indigo-500",
-                        isSelected &&
-                          !isEditing &&
-                          "ring-2 ring-inset ring-indigo-400 bg-indigo-50/30",
-                        isSystemCol && "text-center"
-                      )}
-                      style={{ width: cell.column.getSize() }}
-                      onClick={(e) => {
-                        if (isSystemCol) return;
-                        e.stopPropagation(); // prevent row click
-                        setSelectedCell({
-                          rowId: row.id,
-                          columnId: cell.column.id,
-                        });
-                        setEditingCell(null);
-                        tableRef.current?.focus();
-                      }}
-                      onDoubleClick={(e) => {
-                        if (isSystemCol) return;
-                        e.stopPropagation();
-                        const ct = getCellType(cell.column.id);
-                        if (ct !== "readonly") {
+            {virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              return (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    "group border-b border-zinc-100 transition-colors",
+                    row.getIsSelected() ? "bg-indigo-50" : "hover:bg-zinc-50/70",
+                    onRowClick && "cursor-pointer"
+                  )}
+                  style={{ height: 36 }}
+                  onClick={() => onRowClick?.(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const isEditing =
+                      editingCell?.rowId === row.id &&
+                      editingCell?.columnId === cell.column.id;
+                    const isSelected =
+                      selectedCell?.rowId === row.id &&
+                      selectedCell?.columnId === cell.column.id;
+                    const isSystemCol = SYSTEM_COLS.has(cell.column.id);
+
+                    return (
+                      <td
+                        key={cell.id}
+                        data-row={row.id}
+                        data-col={cell.column.id}
+                        className={cn(
+                          "h-9 overflow-hidden border-r border-zinc-100 p-0",
+                          isEditing && "ring-2 ring-inset ring-indigo-500",
+                          isSelected &&
+                            !isEditing &&
+                            "ring-2 ring-inset ring-indigo-400 bg-indigo-50/30",
+                          isSystemCol && "text-center"
+                        )}
+                        style={{ width: cell.column.getSize() }}
+                        onClick={(e) => {
+                          if (isSystemCol) return;
+                          e.stopPropagation(); // prevent row click
                           setSelectedCell({
                             rowId: row.id,
                             columnId: cell.column.id,
                           });
-                          setEditingCell({
-                            rowId: row.id,
-                            columnId: cell.column.id,
-                          });
-                        }
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  );
-                })}
+                          setEditingCell(null);
+                          tableRef.current?.focus();
+                        }}
+                        onDoubleClick={(e) => {
+                          if (isSystemCol) return;
+                          e.stopPropagation();
+                          const ct = getCellType(cell.column.id);
+                          if (ct !== "readonly") {
+                            setSelectedCell({
+                              rowId: row.id,
+                              columnId: cell.column.id,
+                            });
+                            setEditingCell({
+                              rowId: row.id,
+                              columnId: cell.column.id,
+                            });
+                          }
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+
+            {/* Bottom spacer for virtualization */}
+            {virtualRows.length > 0 && (
+              <tr>
+                <td
+                  colSpan={allColumnCount}
+                  style={{
+                    height: totalHeight - virtualRows[virtualRows.length - 1].end,
+                    padding: 0,
+                    border: "none",
+                  }}
+                />
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
 
