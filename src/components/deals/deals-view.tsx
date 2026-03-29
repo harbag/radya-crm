@@ -15,6 +15,25 @@ import {
   type DealStage,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import type { FilterColumnDef } from "@/components/shared/filter-builder";
+
+const FILTER_COLUMNS: FilterColumnDef[] = [
+  { id: "title", label: "Title", dataType: "text" },
+  { id: "value", label: "Value", dataType: "number" },
+  {
+    id: "stage",
+    label: "Stage",
+    dataType: "select",
+    selectOptions: Object.entries(DEAL_STAGE_CONFIG).map(([key, val]) => ({
+      value: key,
+      label: val.label,
+    })),
+  },
+  { id: "probability", label: "Prob. %", dataType: "number" },
+  { id: "expectedCloseDate", label: "Close Date", dataType: "date" },
+  { id: "notes", label: "Notes", dataType: "text" },
+  { id: "createdAt", label: "Created", dataType: "date" },
+];
 
 const STAGE_COLORS: Record<
   string,
@@ -88,6 +107,7 @@ export default function DealsView({
               formatCurrency(items.reduce((s, d) => s + d.value, 0))
             }
             onItemClick={onRowClick}
+            filterColumns={FILTER_COLUMNS}
           />
         </div>
       </div>
@@ -109,6 +129,7 @@ export default function DealsView({
             getDate={(deal) => deal.expectedCloseDate}
             onItemClick={onRowClick}
             entityName="Deals"
+            filterColumns={FILTER_COLUMNS}
             renderItem={(deal) => (
               <div
                 className={cn(

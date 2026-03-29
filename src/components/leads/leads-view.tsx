@@ -6,7 +6,38 @@ import LeadsGrid from "./leads-grid";
 import LeadCard from "./lead-card";
 import KanbanBoard from "@/components/shared/kanban-board";
 import { useLeadsStore } from "@/store/use-leads-store";
-import { LEAD_STATUS_CONFIG, formatCurrency, type Lead } from "@/lib/mock-data";
+import {
+  LEAD_STATUS_CONFIG,
+  LEAD_SOURCE_CONFIG,
+  formatCurrency,
+  type Lead,
+} from "@/lib/mock-data";
+import type { FilterColumnDef } from "@/components/shared/filter-builder";
+
+const FILTER_COLUMNS: FilterColumnDef[] = [
+  { id: "title", label: "Title", dataType: "text" },
+  {
+    id: "source",
+    label: "Source",
+    dataType: "select",
+    selectOptions: Object.entries(LEAD_SOURCE_CONFIG).map(([key, val]) => ({
+      value: key,
+      label: val.label,
+    })),
+  },
+  {
+    id: "status",
+    label: "Status",
+    dataType: "select",
+    selectOptions: Object.entries(LEAD_STATUS_CONFIG).map(([key, val]) => ({
+      value: key,
+      label: val.label,
+    })),
+  },
+  { id: "estimatedValue", label: "Est. Value", dataType: "number" },
+  { id: "notes", label: "Notes", dataType: "text" },
+  { id: "createdAt", label: "Created", dataType: "date" },
+];
 
 const LEAD_STAGES = Object.entries(LEAD_STATUS_CONFIG).map(([id, cfg]) => ({
   id,
@@ -78,6 +109,7 @@ export default function LeadsView({
               formatCurrency(items.reduce((s, l) => s + l.estimatedValue, 0))
             }
             onItemClick={onRowClick}
+            filterColumns={FILTER_COLUMNS}
           />
         </div>
       </div>

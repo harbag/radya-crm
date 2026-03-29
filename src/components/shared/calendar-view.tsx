@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import FilterBuilder, {
+  evaluateFilters,
+  type FilterColumnDef,
+  type FilterState,
+} from "./filter-builder";
 
 type CalendarViewProps<T extends { id: string }> = {
   items: T[];
@@ -11,6 +16,7 @@ type CalendarViewProps<T extends { id: string }> = {
   renderItem: (item: T) => React.ReactNode;
   onItemClick?: (item: T) => void;
   entityName: string;
+  filterColumns?: FilterColumnDef[];
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -29,17 +35,29 @@ export default function CalendarView<T extends { id: string }>({
   getDate,
   renderItem,
   onItemClick,
+  filterColumns,
 }: CalendarViewProps<T>) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [filterState, setFilterState] = useState<FilterState>({
+    conditions: [],
+    conjunction: "and",
+  });
+
+  const filteredItems = useMemo(() => {
+    if (!filterColumns || filterState.conditions.length === 0) return items;
+    return items.filter((row) =>
+      evaluateFilters(row as unknown as Record<string, unknown>, filterState, filterColumns)
+    );
+  }, [items, filterState, filterColumns]);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfWeek(currentYear, currentMonth);
 
   // Group items by date
   const itemsByDate = new Map<string, T[]>();
-  items.forEach((item) => {
+  filteredItems.forEach((item) => {
     const dateStr = getDate(item);
     if (!dateStr) return;
     const d = new Date(dateStr);
@@ -90,7 +108,23 @@ export default function CalendarView<T extends { id: string }>({
     <div className="flex h-full flex-col bg-white">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-3">
-        <h2 className="text-sm font-semibold text-zinc-900 sm:text-base">{monthName}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900 sm:text-base">{monthName}</h2>
+          {filterColumns && filterColumns.length > 0 && (
+            <>
+              <FilterBuilder
+                filterColumns={filterColumns}
+                filterState={filterState}
+                onFilterChange={setFilterState}
+              />
+              {filterState.conditions.length > 0 && (
+                <span className="text-xs text-zinc-400">
+                  {filteredItems.length} of {items.length}
+                </span>
+              )}
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />

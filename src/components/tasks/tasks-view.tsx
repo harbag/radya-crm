@@ -13,6 +13,33 @@ import {
   type Task,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import type { FilterColumnDef } from "@/components/shared/filter-builder";
+
+const FILTER_COLUMNS: FilterColumnDef[] = [
+  { id: "title", label: "Title", dataType: "text" },
+  {
+    id: "status",
+    label: "Status",
+    dataType: "select",
+    selectOptions: Object.entries(TASK_STATUS_CONFIG).map(([key, val]) => ({
+      value: key,
+      label: val.label,
+    })),
+  },
+  {
+    id: "priority",
+    label: "Priority",
+    dataType: "select",
+    selectOptions: Object.entries(TASK_PRIORITY_CONFIG).map(([key, val]) => ({
+      value: key,
+      label: val.label,
+    })),
+  },
+  { id: "dueDate", label: "Due Date", dataType: "date" },
+  { id: "assignee", label: "Assignee", dataType: "text" },
+  { id: "description", label: "Description", dataType: "text" },
+  { id: "createdAt", label: "Created", dataType: "date" },
+];
 
 const TASK_STAGES = Object.entries(TASK_STATUS_CONFIG).map(([id, cfg]) => ({
   id,
@@ -72,6 +99,7 @@ export default function TasksView({
             )}
             stageColors={STAGE_COLORS}
             onItemClick={onRowClick}
+            filterColumns={FILTER_COLUMNS}
           />
         </div>
       </div>
@@ -91,6 +119,7 @@ export default function TasksView({
             getDate={(task) => task.dueDate}
             onItemClick={onRowClick}
             entityName="Tasks"
+            filterColumns={FILTER_COLUMNS}
             renderItem={(task) => (
               <div
                 className={cn(
