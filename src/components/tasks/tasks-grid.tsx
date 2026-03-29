@@ -51,6 +51,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "status",
@@ -58,6 +59,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "priority",
@@ -65,6 +67,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.priority,
       cell: PriorityCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "dueDate",
@@ -72,6 +75,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.dueDate,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
     {
       accessorKey: "assignee",
@@ -79,6 +83,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.assignee,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "description",
@@ -86,6 +91,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.description,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -93,6 +99,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
   ];
 

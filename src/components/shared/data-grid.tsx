@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,7 +12,7 @@ import {
   type ColumnFiltersState,
   type RowSelectionState,
 } from "@tanstack/react-table";
-import type { EditingCell } from "./grid-cells";
+import type { EditingCell, CellType } from "./grid-cells";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,6 +70,8 @@ type DataGridProps<T extends { id: string }> = {
   rowActions?: RowAction<T>[];
 };
 
+const SYSTEM_COLS = new Set(["select", "rowNum", "actions"]);
+
 // ── Component ───────────────────────────────────────────────────────────────
 export default function DataGrid<T extends { id: string }>({
   data,
@@ -91,6 +93,18 @@ export default function DataGrid<T extends { id: string }>({
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [selectedCell, setSelectedCell] = useState<EditingCell | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const initialCharRef = useRef<string | null>(null);
+
+  // Derive navigable column IDs from user columns
+  const userColumnIds = useMemo(
+    () =>
+      userColumns
+        .map((col) => (col as any).accessorKey ?? col.id)
+        .filter(Boolean) as string[],
+    [userColumns]
+  );
 
   // Build full column list: select + rowNum + user columns + actions
   const columns: ColumnDef<T, any>[] = [
@@ -126,11 +140,22 @@ export default function DataGrid<T extends { id: string }>({
       enableSorting: false,
       enableColumnFilter: false,
       header: () => null,
-      cell: ({ row }) => (
-        <span className="select-none text-xs text-zinc-400">
-          {row.index + 1}
-        </span>
-      ),
+      cell: ({ row, table: tbl }) => {
+        const { selectedCell: sel } = tbl.options.meta!;
+        const isHighlighted = sel?.rowId === row.id;
+        return (
+          <span
+            className={cn(
+              "select-none text-xs",
+              isHighlighted
+                ? "font-semibold text-indigo-600"
+                : "text-zinc-400"
+            )}
+          >
+            {row.index + 1}
+          </span>
+        );
+      },
     },
     ...userColumns,
     {
@@ -185,8 +210,206 @@ export default function DataGrid<T extends { id: string }>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     enableRowSelection: true,
-    meta: { editingCell, setEditingCell, onUpdate },
+    meta: {
+      editingCell,
+      setEditingCell,
+      selectedCell,
+      setSelectedCell,
+      onUpdate,
+      commitEdit,
+      initialCharRef,
+    },
   });
+
+  // Derive row IDs from current (filtered/sorted) model
+  const rowIds = useMemo(
+    () => table.getRowModel().rows.map((r) => r.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [table.getRowModel().rows]
+  );
+
+  // ── Navigation helpers ──────────────────────────────────────────────────
+
+  function getAdjacentCell(
+    current: EditingCell,
+    direction: "up" | "down" | "left" | "right"
+  ): EditingCell | null {
+    const colIdx = userColumnIds.indexOf(current.columnId);
+    const rowIdx = rowIds.indexOf(current.rowId);
+    if (colIdx === -1 || rowIdx === -1) return null;
+
+    switch (direction) {
+      case "up":
+        return rowIdx > 0
+          ? { rowId: rowIds[rowIdx - 1], columnId: current.columnId }
+          : null;
+      case "down":
+        return rowIdx < rowIds.length - 1
+          ? { rowId: rowIds[rowIdx + 1], columnId: current.columnId }
+          : null;
+      case "left":
+        return colIdx > 0
+          ? { rowId: current.rowId, columnId: userColumnIds[colIdx - 1] }
+          : null;
+      case "right":
+        return colIdx < userColumnIds.length - 1
+          ? { rowId: current.rowId, columnId: userColumnIds[colIdx + 1] }
+          : null;
+    }
+  }
+
+  function getTabCell(
+    current: EditingCell,
+    reverse: boolean
+  ): EditingCell | null {
+    const colIdx = userColumnIds.indexOf(current.columnId);
+    const rowIdx = rowIds.indexOf(current.rowId);
+
+    if (!reverse) {
+      if (colIdx < userColumnIds.length - 1)
+        return { rowId: current.rowId, columnId: userColumnIds[colIdx + 1] };
+      if (rowIdx < rowIds.length - 1)
+        return { rowId: rowIds[rowIdx + 1], columnId: userColumnIds[0] };
+      return null;
+    } else {
+      if (colIdx > 0)
+        return { rowId: current.rowId, columnId: userColumnIds[colIdx - 1] };
+      if (rowIdx > 0)
+        return {
+          rowId: rowIds[rowIdx - 1],
+          columnId: userColumnIds[userColumnIds.length - 1],
+        };
+      return null;
+    }
+  }
+
+  function getCellType(columnId: string): CellType {
+    const col = table.getColumn(columnId);
+    return (col?.columnDef.meta as any)?.cellType ?? "readonly";
+  }
+
+  // ── commitEdit callback ─────────────────────────────────────────────────
+
+  function commitEdit(
+    action: "enter" | "tab" | "shift-tab" | "escape"
+  ) {
+    const cell = editingCell;
+    setEditingCell(null);
+
+    if (!cell) {
+      tableRef.current?.focus();
+      return;
+    }
+
+    if (action === "escape") {
+      setSelectedCell({ ...cell });
+      tableRef.current?.focus();
+      return;
+    }
+
+    let next: EditingCell | null = null;
+    if (action === "enter") next = getAdjacentCell(cell, "down");
+    if (action === "tab") next = getTabCell(cell, false);
+    if (action === "shift-tab") next = getTabCell(cell, true);
+
+    setSelectedCell(next ?? cell);
+    tableRef.current?.focus();
+  }
+
+  // ── Keyboard handler ────────────────────────────────────────────────────
+
+  const handleTableKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTableElement>) => {
+      // If editing, let cell's own handler deal with it
+      if (editingCell) return;
+      if (!selectedCell) return;
+
+      const cellType = getCellType(selectedCell.columnId);
+
+      switch (e.key) {
+        case "ArrowUp":
+        case "ArrowDown":
+        case "ArrowLeft":
+        case "ArrowRight": {
+          e.preventDefault();
+          const dir = e.key
+            .replace("Arrow", "")
+            .toLowerCase() as "up" | "down" | "left" | "right";
+          const next = getAdjacentCell(selectedCell, dir);
+          if (next) setSelectedCell(next);
+          break;
+        }
+
+        case "Tab": {
+          e.preventDefault();
+          const next = getTabCell(selectedCell, e.shiftKey);
+          if (next) setSelectedCell(next);
+          break;
+        }
+
+        case "Enter": {
+          e.preventDefault();
+          if (cellType === "text" || cellType === "dropdown") {
+            setEditingCell({ ...selectedCell });
+          }
+          break;
+        }
+
+        case "Escape": {
+          e.preventDefault();
+          setSelectedCell(null);
+          break;
+        }
+
+        case "Backspace":
+        case "Delete": {
+          if (cellType === "text") {
+            e.preventDefault();
+            onUpdate(selectedCell.rowId, { [selectedCell.columnId]: "" });
+          }
+          break;
+        }
+
+        default: {
+          // Alphanumeric type-to-edit on text cells
+          if (
+            cellType === "text" &&
+            e.key.length === 1 &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey
+          ) {
+            e.preventDefault();
+            initialCharRef.current = e.key;
+            setEditingCell({ ...selectedCell });
+          }
+          break;
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedCell, editingCell, userColumnIds, rowIds]
+  );
+
+  // ── Scroll selected cell into view ──────────────────────────────────────
+
+  useEffect(() => {
+    if (!selectedCell) return;
+    const td = tableRef.current?.querySelector(
+      `[data-row="${selectedCell.rowId}"][data-col="${selectedCell.columnId}"]`
+    ) as HTMLElement | null;
+    td?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [selectedCell]);
+
+  // ── Clear selection if selected row is no longer visible ────────────────
+
+  useEffect(() => {
+    if (selectedCell && !rowIds.includes(selectedCell.rowId)) {
+      setSelectedCell(null);
+    }
+  }, [rowIds, selectedCell]);
+
+  // ── Standard handlers ───────────────────────────────────────────────────
 
   const selectedRows = table.getSelectedRowModel().rows;
 
@@ -273,7 +496,8 @@ export default function DataGrid<T extends { id: string }>({
               className="h-8 gap-1.5 text-xs"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Delete</span> {selectedRows.length}
+              <span className="hidden sm:inline">Delete</span>{" "}
+              {selectedRows.length}
             </Button>
           )}
 
@@ -283,15 +507,21 @@ export default function DataGrid<T extends { id: string }>({
               size="sm"
               onClick={() => {
                 const id = onAdd();
-                setTimeout(
-                  () => setEditingCell({ rowId: id, columnId: userColumns[0]?.id as string ?? "" }),
-                  30
-                );
+                const firstCol =
+                  (userColumns[0]?.id as string) ??
+                  ((userColumns[0] as any)?.accessorKey as string) ??
+                  "";
+                setTimeout(() => {
+                  setSelectedCell({ rowId: id, columnId: firstCol });
+                  setEditingCell({ rowId: id, columnId: firstCol });
+                }, 30);
               }}
               className="h-8 gap-1.5 text-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{addLabel ?? `Add ${entityName.replace(/s$/, "")}`}</span>
+              <span className="hidden sm:inline">
+                {addLabel ?? `Add ${entityName.replace(/s$/, "")}`}
+              </span>
             </Button>
           )}
         </div>
@@ -300,26 +530,45 @@ export default function DataGrid<T extends { id: string }>({
       {/* Grid */}
       <div className="flex-1 overflow-auto">
         <table
-          className="border-collapse text-sm"
+          ref={tableRef}
+          tabIndex={0}
+          className="border-collapse text-sm outline-none"
           style={{ minWidth: tableMinWidth, width: "100%" }}
+          onKeyDown={handleTableKeyDown}
+          onBlur={(e) => {
+            // If focus left the table entirely, clear selection
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              if (!editingCell) {
+                setSelectedCell(null);
+              }
+            }
+          }}
         >
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-zinc-200 bg-zinc-50">
               {table.getFlatHeaders().map((header) => {
                 const canSort = header.column.getCanSort();
                 const sortDir = header.column.getIsSorted();
+                const isColHighlighted =
+                  selectedCell?.columnId === header.column.id;
                 return (
                   <th
                     key={header.id}
                     className={cn(
                       "border-r border-zinc-200 px-2 py-2 text-left",
                       canSort &&
-                        "cursor-pointer select-none hover:bg-zinc-100"
+                        "cursor-pointer select-none hover:bg-zinc-100",
+                      isColHighlighted && "bg-indigo-50"
                     )}
                     style={{ width: header.column.getSize() }}
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500",
+                        isColHighlighted && "text-indigo-600"
+                      )}
+                    >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
@@ -348,9 +597,7 @@ export default function DataGrid<T extends { id: string }>({
                 key={row.id}
                 className={cn(
                   "group border-b border-zinc-100 transition-colors",
-                  row.getIsSelected()
-                    ? "bg-indigo-50"
-                    : "hover:bg-zinc-50/70",
+                  row.getIsSelected() ? "bg-indigo-50" : "hover:bg-zinc-50/70",
                   onRowClick && "cursor-pointer"
                 )}
                 style={{ height: 36 }}
@@ -360,20 +607,50 @@ export default function DataGrid<T extends { id: string }>({
                   const isEditing =
                     editingCell?.rowId === row.id &&
                     editingCell?.columnId === cell.column.id;
-                  const isCenterAlign =
-                    cell.column.id === "select" ||
-                    cell.column.id === "rowNum" ||
-                    cell.column.id === "actions";
+                  const isSelected =
+                    selectedCell?.rowId === row.id &&
+                    selectedCell?.columnId === cell.column.id;
+                  const isSystemCol = SYSTEM_COLS.has(cell.column.id);
 
                   return (
                     <td
                       key={cell.id}
+                      data-row={row.id}
+                      data-col={cell.column.id}
                       className={cn(
                         "h-9 overflow-hidden border-r border-zinc-100 p-0",
                         isEditing && "ring-2 ring-inset ring-indigo-500",
-                        isCenterAlign && "text-center"
+                        isSelected &&
+                          !isEditing &&
+                          "ring-2 ring-inset ring-indigo-400 bg-indigo-50/30",
+                        isSystemCol && "text-center"
                       )}
                       style={{ width: cell.column.getSize() }}
+                      onClick={(e) => {
+                        if (isSystemCol) return;
+                        e.stopPropagation(); // prevent row click
+                        setSelectedCell({
+                          rowId: row.id,
+                          columnId: cell.column.id,
+                        });
+                        setEditingCell(null);
+                        tableRef.current?.focus();
+                      }}
+                      onDoubleClick={(e) => {
+                        if (isSystemCol) return;
+                        e.stopPropagation();
+                        const ct = getCellType(cell.column.id);
+                        if (ct !== "readonly") {
+                          setSelectedCell({
+                            rowId: row.id,
+                            columnId: cell.column.id,
+                          });
+                          setEditingCell({
+                            rowId: row.id,
+                            columnId: cell.column.id,
+                          });
+                        }
+                      }}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -392,14 +669,14 @@ export default function DataGrid<T extends { id: string }>({
           <button
             onClick={() => {
               const id = onAdd();
-              setTimeout(
-                () =>
-                  setEditingCell({
-                    rowId: id,
-                    columnId: userColumns[0]?.id as string ?? "",
-                  }),
-                30
-              );
+              const firstCol =
+                (userColumns[0]?.id as string) ??
+                ((userColumns[0] as any)?.accessorKey as string) ??
+                "";
+              setTimeout(() => {
+                setSelectedCell({ rowId: id, columnId: firstCol });
+                setEditingCell({ rowId: id, columnId: firstCol });
+              }, 30);
             }}
             className="flex w-full items-center gap-2 border-b border-zinc-100 px-[88px] py-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-zinc-600"
             style={{ minWidth: tableMinWidth }}
@@ -413,7 +690,9 @@ export default function DataGrid<T extends { id: string }>({
         {table.getFilteredRowModel().rows.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
             <EntityIcon className="mb-2 h-8 w-8 opacity-40" />
-            <p className="text-sm font-medium">No {entityName.toLowerCase()} found</p>
+            <p className="text-sm font-medium">
+              No {entityName.toLowerCase()} found
+            </p>
             <p className="text-xs">Try adjusting your filters</p>
           </div>
         )}

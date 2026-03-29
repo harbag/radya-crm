@@ -90,6 +90,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "source",
@@ -97,6 +98,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.source,
       cell: SourceCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "status",
@@ -104,18 +106,21 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "contactId",
       header: "Contact",
       size: COLUMN_WIDTHS.contactId,
       cell: ContactCell,
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "companyId",
       header: "Company",
       size: COLUMN_WIDTHS.companyId,
       cell: CompanyCell,
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "estimatedValue",
@@ -123,6 +128,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.estimatedValue,
       cell: CurrencyCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
     {
       accessorKey: "notes",
@@ -130,6 +136,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -137,6 +144,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
   ];
 

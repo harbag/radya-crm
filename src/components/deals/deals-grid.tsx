@@ -60,6 +60,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "value",
@@ -67,18 +68,21 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.value,
       cell: CurrencyCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
     {
       accessorKey: "contactId",
       header: "Contact",
       size: COLUMN_WIDTHS.contactId,
       cell: ContactCell,
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "companyId",
       header: "Company",
       size: COLUMN_WIDTHS.companyId,
       cell: CompanyCell,
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "stage",
@@ -86,6 +90,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.stage,
       cell: StageCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "probability",
@@ -93,6 +98,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.probability,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "expectedCloseDate",
@@ -100,6 +106,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.expectedCloseDate,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
     {
       accessorKey: "notes",
@@ -107,6 +114,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -114,6 +122,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
   ];
 

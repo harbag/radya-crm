@@ -53,6 +53,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.name,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "email",
@@ -60,6 +61,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.email,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "phone",
@@ -67,6 +69,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.phone,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "jobTitle",
@@ -74,6 +77,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.jobTitle,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "companyId",
@@ -81,6 +85,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.companyId,
       cell: CompanyCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "status",
@@ -88,6 +93,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
+      meta: { cellType: "dropdown" as const },
     },
     {
       accessorKey: "notes",
@@ -95,6 +101,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -102,6 +109,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
   ];
 

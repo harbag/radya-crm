@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import type { CellContext, RowData } from "@tanstack/react-table";
 import {
   Select,
@@ -12,59 +12,94 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/mock-data";
 
-// ── TableMeta augmentation ─────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 export type EditingCell = { rowId: string; columnId: string };
+export type CellType = "text" | "dropdown" | "readonly";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface TableMeta<TData extends RowData> {
     editingCell: EditingCell | null;
     setEditingCell: React.Dispatch<React.SetStateAction<EditingCell | null>>;
+    selectedCell: EditingCell | null;
+    setSelectedCell: React.Dispatch<React.SetStateAction<EditingCell | null>>;
     onUpdate: (id: string, updates: Record<string, unknown>) => void;
+    commitEdit: (action: "enter" | "tab" | "shift-tab" | "escape") => void;
+    initialCharRef: React.MutableRefObject<string | null>;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    cellType?: CellType;
   }
 }
 
-// ── Editable Text Cell ─────────────────────────────────────────────────────
+// ── Editable Text Cell ────────────────────────────────────────────────────────
 export function EditableTextCell<T extends { id: string }>({
   getValue,
   row,
   column,
   table,
 }: CellContext<T, string>) {
-  const { editingCell, setEditingCell, onUpdate } = table.options.meta!;
+  const { editingCell, onUpdate, commitEdit, initialCharRef } =
+    table.options.meta!;
   const isEditing =
     editingCell?.rowId === row.id && editingCell?.columnId === column.id;
   const value = getValue() ?? "";
+  const savedRef = useRef(false);
 
   if (isEditing) {
+    // Read and clear initial char (for type-to-edit)
+    const initialChar = initialCharRef.current;
+    initialCharRef.current = null;
+
     return (
       <input
         className="h-full w-full bg-white px-2 text-sm outline-none"
-        defaultValue={value}
+        defaultValue={initialChar ?? value}
         autoFocus
+        ref={(el) => {
+          if (el && initialChar) {
+            // Place cursor at end when type-to-edit
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
+        }}
         onBlur={(e) => {
-          if (e.target.value !== value) {
+          // Fallback save for click-outside
+          if (!savedRef.current && e.target.value !== value) {
             onUpdate(row.original.id, { [column.id]: e.target.value });
           }
-          setEditingCell(null);
+          savedRef.current = false;
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") setEditingCell(null);
-          if (e.key === "Tab") {
+          if (e.key === "Enter") {
             e.preventDefault();
-            e.currentTarget.blur();
+            const newVal = e.currentTarget.value;
+            if (newVal !== value) {
+              onUpdate(row.original.id, { [column.id]: newVal });
+              savedRef.current = true;
+            }
+            commitEdit("enter");
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            savedRef.current = true; // skip save on blur
+            commitEdit("escape");
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            const newVal = e.currentTarget.value;
+            if (newVal !== value) {
+              onUpdate(row.original.id, { [column.id]: newVal });
+              savedRef.current = true;
+            }
+            commitEdit(e.shiftKey ? "shift-tab" : "tab");
           }
         }}
       />
     );
   }
 
+  // Display mode — no onClick, selection handled by <td>
   return (
-    <div
-      className="flex h-full w-full cursor-default items-center px-2 text-sm"
-      onClick={() => setEditingCell({ rowId: row.id, columnId: column.id })}
-    >
+    <div className="flex h-full w-full cursor-default items-center px-2 text-sm">
       {value ? (
         <span className="truncate">{value}</span>
       ) : (
@@ -74,7 +109,7 @@ export function EditableTextCell<T extends { id: string }>({
   );
 }
 
-// ── Status Badge Cell ──────────────────────────────────────────────────────
+// ── Status Badge Cell ─────────────────────────────────────────────────────────
 type StatusConfig = Record<string, { label: string; className: string }>;
 
 export function createStatusBadgeCell<T extends { id: string }>(
@@ -84,16 +119,43 @@ export function createStatusBadgeCell<T extends { id: string }>(
   return function StatusBadgeCell({
     getValue,
     row,
+    column,
     table,
   }: CellContext<T, string>) {
-    const { onUpdate } = table.options.meta!;
+    const { editingCell, onUpdate, commitEdit } = table.options.meta!;
+    const isEditing =
+      editingCell?.rowId === row.id && editingCell?.columnId === column.id;
     const status = getValue();
     const cfg = config[status];
 
+    if (!isEditing) {
+      // Display-only badge
+      return (
+        <div className="flex h-full w-full items-center px-2 text-sm">
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+              cfg?.className
+            )}
+          >
+            {cfg?.label ?? status}
+          </span>
+        </div>
+      );
+    }
+
+    // Editing: render open Select
     return (
       <Select
+        open
         value={status}
-        onValueChange={(val) => onUpdate(row.original.id, { [fieldName]: val })}
+        onValueChange={(val) => {
+          onUpdate(row.original.id, { [fieldName]: val });
+          commitEdit("enter");
+        }}
+        onOpenChange={(open) => {
+          if (!open) commitEdit("escape");
+        }}
       >
         <SelectTrigger className="h-full w-full rounded-none border-0 px-2 shadow-none focus:ring-0 text-sm">
           <span
@@ -124,7 +186,7 @@ export function createStatusBadgeCell<T extends { id: string }>(
   };
 }
 
-// ── Date Cell ──────────────────────────────────────────────────────────────
+// ── Date Cell ─────────────────────────────────────────────────────────────────
 export function DateCell<T extends { id: string }>({
   getValue,
 }: CellContext<T, string>) {
@@ -142,7 +204,7 @@ export function DateCell<T extends { id: string }>({
   );
 }
 
-// ── Currency Cell ──────────────────────────────────────────────────────────
+// ── Currency Cell ─────────────────────────────────────────────────────────────
 export function CurrencyCell<T extends { id: string }>({
   getValue,
 }: CellContext<T, number>) {
@@ -154,7 +216,7 @@ export function CurrencyCell<T extends { id: string }>({
   );
 }
 
-// ── Relation Cell (FK lookup) ──────────────────────────────────────────────
+// ── Relation Cell (FK lookup) ─────────────────────────────────────────────────
 export function createRelationCell<T extends { id: string }>(
   getItems: () => { id: string; name: string }[],
   fieldName: string
@@ -162,21 +224,43 @@ export function createRelationCell<T extends { id: string }>(
   return function RelationCell({
     getValue,
     row,
+    column,
     table,
   }: CellContext<T, string | null>) {
-    const { onUpdate } = table.options.meta!;
+    const { editingCell, onUpdate, commitEdit } = table.options.meta!;
+    const isEditing =
+      editingCell?.rowId === row.id && editingCell?.columnId === column.id;
     const currentId = getValue();
     const items = getItems();
     const current = items.find((i) => i.id === currentId);
 
+    if (!isEditing) {
+      // Display-only
+      return (
+        <div className="flex h-full w-full items-center px-2 text-sm">
+          <span className="truncate">
+            {current?.name ?? (
+              <span className="text-zinc-300">&mdash;</span>
+            )}
+          </span>
+        </div>
+      );
+    }
+
+    // Editing: render open Select
     return (
       <Select
+        open
         value={currentId ?? "none"}
-        onValueChange={(val) =>
+        onValueChange={(val) => {
           onUpdate(row.original.id, {
             [fieldName]: val === "none" ? null : val,
-          })
-        }
+          });
+          commitEdit("enter");
+        }}
+        onOpenChange={(open) => {
+          if (!open) commitEdit("escape");
+        }}
       >
         <SelectTrigger className="h-full w-full rounded-none border-0 px-2 shadow-none focus:ring-0 text-sm">
           <span className="truncate">

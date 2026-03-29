@@ -38,6 +38,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.name,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "industry",
@@ -45,6 +46,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.industry,
       cell: EditableTextCell,
       filterFn: "includesString",
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "website",
@@ -52,6 +54,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.website,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "phone",
@@ -59,6 +62,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.phone,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "address",
@@ -66,6 +70,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.address,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "notes",
@@ -73,6 +78,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
+      meta: { cellType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -80,6 +86,7 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
   ];
 
