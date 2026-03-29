@@ -3,7 +3,7 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Users } from "lucide-react";
-import DataGrid, { type FilterOption } from "@/components/shared/data-grid";
+import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   createStatusBadgeCell,
@@ -46,6 +46,11 @@ export default function ContactsGrid({
     "companyId"
   );
 
+  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+
   const columns: ColumnDef<Contact, any>[] = [
     {
       accessorKey: "name",
@@ -53,7 +58,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.name,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "email",
@@ -61,7 +66,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.email,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "phone",
@@ -69,7 +74,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.phone,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "jobTitle",
@@ -77,7 +82,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.jobTitle,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "companyId",
@@ -93,7 +98,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: statusOptions },
     },
     {
       accessorKey: "notes",
@@ -101,7 +106,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -109,18 +114,7 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
-    },
-  ];
-
-  const filterOptions: FilterOption[] = [
-    {
-      id: "status",
-      label: "All Status",
-      options: Object.entries(STATUS_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
   ];
 
@@ -145,7 +139,6 @@ export default function ContactsGrid({
       onUpdate={(id, updates) => updateContact(id, updates as Partial<Contact>)}
       onDelete={deleteContacts}
       onRowClick={onRowClick}
-      filterOptions={filterOptions}
       toolbarExtra={toolbarExtra}
     />
   );

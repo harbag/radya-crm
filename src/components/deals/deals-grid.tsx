@@ -3,7 +3,7 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { KanbanSquare } from "lucide-react";
-import DataGrid, { type FilterOption } from "@/components/shared/data-grid";
+import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   createStatusBadgeCell,
@@ -53,6 +53,11 @@ export default function DealsGrid({
     "companyId"
   );
 
+  const stageOptions = Object.entries(DEAL_STAGE_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+
   const columns: ColumnDef<Deal, any>[] = [
     {
       accessorKey: "title",
@@ -60,7 +65,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "value",
@@ -68,7 +73,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.value,
       cell: CurrencyCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
+      meta: { cellType: "readonly" as const, dataType: "number" as const },
     },
     {
       accessorKey: "contactId",
@@ -90,7 +95,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.stage,
       cell: StageCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: stageOptions },
     },
     {
       accessorKey: "probability",
@@ -98,7 +103,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.probability,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "number" as const },
     },
     {
       accessorKey: "expectedCloseDate",
@@ -106,7 +111,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.expectedCloseDate,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
     {
       accessorKey: "notes",
@@ -114,7 +119,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -122,18 +127,7 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
-    },
-  ];
-
-  const filterOptions: FilterOption[] = [
-    {
-      id: "stage",
-      label: "All Stages",
-      options: Object.entries(DEAL_STAGE_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
   ];
 
@@ -159,7 +153,6 @@ export default function DealsGrid({
       onUpdate={(id, updates) => updateDeal(id, updates as Partial<Deal>)}
       onDelete={deleteDeals}
       onRowClick={onRowClick}
-      filterOptions={filterOptions}
       toolbarExtra={toolbarExtra}
       addLabel="Add Deal"
     />

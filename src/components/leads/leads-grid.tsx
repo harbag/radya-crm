@@ -3,7 +3,7 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Target, ArrowRightLeft } from "lucide-react";
-import DataGrid, { type FilterOption, type RowAction } from "@/components/shared/data-grid";
+import DataGrid, { type RowAction } from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   createStatusBadgeCell,
@@ -83,6 +83,15 @@ export default function LeadsGrid({
     markConverted(lead.id);
   }
 
+  const sourceOptions = Object.entries(LEAD_SOURCE_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+  const statusOptions = Object.entries(LEAD_STATUS_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+
   const columns: ColumnDef<Lead, any>[] = [
     {
       accessorKey: "title",
@@ -90,7 +99,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "source",
@@ -98,7 +107,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.source,
       cell: SourceCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: sourceOptions },
     },
     {
       accessorKey: "status",
@@ -106,7 +115,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: statusOptions },
     },
     {
       accessorKey: "contactId",
@@ -128,7 +137,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.estimatedValue,
       cell: CurrencyCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
+      meta: { cellType: "readonly" as const, dataType: "number" as const },
     },
     {
       accessorKey: "notes",
@@ -136,7 +145,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.notes,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -144,26 +153,7 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
-    },
-  ];
-
-  const filterOptions: FilterOption[] = [
-    {
-      id: "status",
-      label: "All Status",
-      options: Object.entries(LEAD_STATUS_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
-    },
-    {
-      id: "source",
-      label: "All Sources",
-      options: Object.entries(LEAD_SOURCE_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
   ];
 
@@ -196,7 +186,6 @@ export default function LeadsGrid({
       onUpdate={(id, updates) => updateLead(id, updates as Partial<Lead>)}
       onDelete={deleteLeads}
       onRowClick={onRowClick}
-      filterOptions={filterOptions}
       toolbarExtra={toolbarExtra}
       addLabel="Add Lead"
       rowActions={rowActions}

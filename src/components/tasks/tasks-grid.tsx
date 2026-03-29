@@ -3,7 +3,7 @@
 import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckSquare } from "lucide-react";
-import DataGrid, { type FilterOption } from "@/components/shared/data-grid";
+import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   createStatusBadgeCell,
@@ -44,6 +44,15 @@ export default function TasksGrid({
 }) {
   const { tasks, addTask, updateTask, deleteTasks } = useTasksStore();
 
+  const statusOptions = Object.entries(TASK_STATUS_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+  const priorityOptions = Object.entries(TASK_PRIORITY_CONFIG).map(([key, val]) => ({
+    value: key,
+    label: val.label,
+  }));
+
   const columns: ColumnDef<Task, any>[] = [
     {
       accessorKey: "title",
@@ -51,7 +60,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.title,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "status",
@@ -59,7 +68,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: statusOptions },
     },
     {
       accessorKey: "priority",
@@ -67,7 +76,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.priority,
       cell: PriorityCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const },
+      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: priorityOptions },
     },
     {
       accessorKey: "dueDate",
@@ -75,7 +84,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.dueDate,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
     {
       accessorKey: "assignee",
@@ -83,7 +92,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.assignee,
       cell: EditableTextCell,
       filterFn: "includesString",
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "description",
@@ -91,7 +100,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.description,
       cell: EditableTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const },
+      meta: { cellType: "text" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
@@ -99,26 +108,7 @@ export default function TasksGrid({
       size: COLUMN_WIDTHS.createdAt,
       cell: DateCell,
       enableColumnFilter: false,
-      meta: { cellType: "readonly" as const },
-    },
-  ];
-
-  const filterOptions: FilterOption[] = [
-    {
-      id: "status",
-      label: "All Status",
-      options: Object.entries(TASK_STATUS_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
-    },
-    {
-      id: "priority",
-      label: "All Priority",
-      options: Object.entries(TASK_PRIORITY_CONFIG).map(([key, val]) => ({
-        value: key,
-        label: val.label,
-      })),
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
   ];
 
@@ -144,7 +134,6 @@ export default function TasksGrid({
       onUpdate={(id, updates) => updateTask(id, updates as Partial<Task>)}
       onDelete={deleteTasks}
       onRowClick={onRowClick}
-      filterOptions={filterOptions}
       toolbarExtra={toolbarExtra}
       addLabel="Add Task"
     />

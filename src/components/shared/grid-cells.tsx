@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/mock-data";
 
+import type { FilterDataType } from "./filter-builder";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type EditingCell = { rowId: string; columnId: string };
 export type CellType = "text" | "dropdown" | "readonly";
@@ -30,6 +32,8 @@ declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     cellType?: CellType;
+    dataType?: FilterDataType;
+    selectOptions?: { value: string; label: string }[];
   }
 }
 

@@ -14,15 +14,13 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table";
 import type { EditingCell, CellType } from "./grid-cells";
+import FilterBuilder, {
+  evaluateFilters,
+  type FilterColumnDef,
+  type FilterState,
+} from "./filter-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,12 +40,6 @@ import {
 } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
-export type FilterOption = {
-  id: string;
-  label: string;
-  options: { value: string; label: string }[];
-};
-
 export type RowAction<T> = {
   label: string;
   icon?: LucideIcon;
@@ -65,7 +57,6 @@ type DataGridProps<T extends { id: string }> = {
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
   onDelete: (ids: string[]) => void;
   onRowClick?: (row: T) => void;
-  filterOptions?: FilterOption[];
   toolbarExtra?: React.ReactNode;
   addLabel?: string;
   rowActions?: RowAction<T>[];
@@ -84,7 +75,6 @@ export default function DataGrid<T extends { id: string }>({
   onUpdate,
   onDelete,
   onRowClick,
-  filterOptions = [],
   toolbarExtra,
   addLabel,
   rowActions = [],
@@ -95,6 +85,10 @@ export default function DataGrid<T extends { id: string }>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<EditingCell | null>(null);
+  const [filterState, setFilterState] = useState<FilterState>({
+    conditions: [],
+    conjunction: "and",
+  });
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const initialCharRef = useRef<string | null>(null);
@@ -108,6 +102,34 @@ export default function DataGrid<T extends { id: string }>({
         .filter(Boolean) as string[],
     [userColumns]
   );
+
+  // Derive filter column definitions from user columns
+  const filterColumns: FilterColumnDef[] = useMemo(
+    () =>
+      userColumns
+        .map((col) => {
+          const id =
+            (col as any).accessorKey ?? col.id;
+          const meta = col.meta as any;
+          if (!id || !meta?.dataType) return null;
+          return {
+            id,
+            label: typeof col.header === "string" ? col.header : id,
+            dataType: meta.dataType,
+            selectOptions: meta.selectOptions,
+          } as FilterColumnDef;
+        })
+        .filter(Boolean) as FilterColumnDef[],
+    [userColumns]
+  );
+
+  // Apply advanced filter conditions to data
+  const filteredData = useMemo(() => {
+    if (filterState.conditions.length === 0) return data;
+    return data.filter((row) =>
+      evaluateFilters(row as unknown as Record<string, unknown>, filterState, filterColumns)
+    );
+  }, [data, filterState, filterColumns]);
 
   // Build full column list: select + rowNum + user columns + actions
   const columns: ColumnDef<T, any>[] = [
@@ -201,7 +223,7 @@ export default function DataGrid<T extends { id: string }>({
   ];
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getRowId: (row) => row.id,
     state: { sorting, columnFilters, globalFilter, rowSelection },
@@ -452,17 +474,6 @@ export default function DataGrid<T extends { id: string }>({
     setRowSelection({});
   }
 
-  function handleFilterChange(filterId: string, value: string) {
-    if (value === "all") {
-      setColumnFilters((prev) => prev.filter((f) => f.id !== filterId));
-    } else {
-      setColumnFilters((prev) => [
-        ...prev.filter((f) => f.id !== filterId),
-        { id: filterId, value },
-      ]);
-    }
-  }
-
   const tableMinWidth = Object.values(columnWidths).reduce(
     (a, b) => a + (b ?? 0),
     0
@@ -495,31 +506,14 @@ export default function DataGrid<T extends { id: string }>({
             />
           </div>
 
-          {/* Filter dropdowns - hidden on mobile */}
-          {filterOptions.map((filter) => {
-            const activeValue =
-              (columnFilters.find((f) => f.id === filter.id)
-                ?.value as string) ?? "all";
-            return (
-              <Select
-                key={filter.id}
-                value={activeValue}
-                onValueChange={(val) => handleFilterChange(filter.id, val)}
-              >
-                <SelectTrigger className="hidden h-8 w-36 text-xs sm:inline-flex">
-                  <SelectValue placeholder={filter.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{filter.label}</SelectItem>
-                  {filter.options.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            );
-          })}
+          {/* Advanced filter builder */}
+          {filterColumns.length > 0 && (
+            <FilterBuilder
+              filterColumns={filterColumns}
+              filterState={filterState}
+              onFilterChange={setFilterState}
+            />
+          )}
 
           {/* Delete selected */}
           {selectedRows.length > 0 && (
