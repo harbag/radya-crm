@@ -37,9 +37,11 @@ const PriorityCell = createStatusBadgeCell<Task>(
 
 export default function TasksGrid({
   onRowClick,
+  titleExtra,
   toolbarExtra,
 }: {
   onRowClick?: (row: Task) => void;
+  titleExtra?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
   const { tasks, addTask, updateTask, deleteTasks } = useTasksStore();
@@ -134,6 +136,7 @@ export default function TasksGrid({
       onUpdate={(id, updates) => updateTask(id, updates as Partial<Task>)}
       onDelete={deleteTasks}
       onRowClick={onRowClick}
+      titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Task"
     />

@@ -82,8 +82,8 @@ export default function TasksView({
   if (view === "kanban") {
     return (
       <div className="flex h-full flex-col bg-white">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
-          <h1 className="text-base font-semibold text-zinc-900">Tasks</h1>
+        <div className="flex items-center border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
+          <h1 className="mr-3 text-base font-semibold text-zinc-900">Tasks</h1>
           {viewSwitcher}
         </div>
         <div className="flex-1 overflow-hidden">
@@ -109,8 +109,8 @@ export default function TasksView({
   if (view === "calendar") {
     return (
       <div className="flex h-full flex-col bg-white">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
-          <h1 className="text-base font-semibold text-zinc-900">Tasks</h1>
+        <div className="flex items-center border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
+          <h1 className="mr-3 text-base font-semibold text-zinc-900">Tasks</h1>
           {viewSwitcher}
         </div>
         <div className="flex-1 overflow-hidden">
@@ -136,5 +136,5 @@ export default function TasksView({
     );
   }
 
-  return <TasksGrid onRowClick={onRowClick} toolbarExtra={viewSwitcher} />;
+  return <TasksGrid onRowClick={onRowClick} titleExtra={viewSwitcher} />;
 }

@@ -41,9 +41,11 @@ const SourceCell = createStatusBadgeCell<Lead>(LEAD_SOURCE_CONFIG, "source");
 
 export default function LeadsGrid({
   onRowClick,
+  titleExtra,
   toolbarExtra,
 }: {
   onRowClick?: (row: Lead) => void;
+  titleExtra?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
   const { leads, addLead, updateLead, deleteLeads, markConverted } = useLeadsStore();
@@ -186,6 +188,7 @@ export default function LeadsGrid({
       onUpdate={(id, updates) => updateLead(id, updates as Partial<Lead>)}
       onDelete={deleteLeads}
       onRowClick={onRowClick}
+      titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Lead"
       rowActions={rowActions}

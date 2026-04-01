@@ -35,9 +35,11 @@ const StageCell = createStatusBadgeCell<Deal>(DEAL_STAGE_CONFIG, "stage");
 
 export default function DealsGrid({
   onRowClick,
+  titleExtra,
   toolbarExtra,
 }: {
   onRowClick?: (row: Deal) => void;
+  titleExtra?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
   const { deals, addDeal, updateDeal, deleteDeals } = useDealsStore();
@@ -153,6 +155,7 @@ export default function DealsGrid({
       onUpdate={(id, updates) => updateDeal(id, updates as Partial<Deal>)}
       onDelete={deleteDeals}
       onRowClick={onRowClick}
+      titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Deal"
     />
