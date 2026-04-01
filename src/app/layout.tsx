@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Sidebar from "@/components/layout/sidebar";
+import { DesktopSidebar, MobileSidebar, MobileTopBar } from "@/components/layout/sidebar";
+import EntityDetailPanel from "@/components/shared/entity-detail-panel";
+import AIChatPanel from "@/components/layout/ai-chat-panel";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Radya CRM",
@@ -25,15 +16,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="font-sans antialiased">
         <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar />
+          <DesktopSidebar />
+          <MobileSidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
+            <MobileTopBar />
             {children}
           </div>
         </div>
+        <EntityDetailPanel />
+        <AIChatPanel />
       </body>
     </html>
   );
