@@ -84,7 +84,7 @@ export default function DealsView({
 
   if (view === "kanban") {
     return (
-      <div className="flex h-full flex-col bg-white">
+      <div className="flex h-full flex-col bg-background">
         <div className="flex items-center border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
           <h1 className="mr-3 text-base font-semibold text-zinc-900">Deals</h1>
           {viewSwitcher}
@@ -114,7 +114,7 @@ export default function DealsView({
 
   if (view === "calendar") {
     return (
-      <div className="flex h-full flex-col bg-white">
+      <div className="flex h-full flex-col bg-background">
         <div className="flex items-center border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
           <h1 className="mr-3 text-base font-semibold text-zinc-900">Deals</h1>
           {viewSwitcher}

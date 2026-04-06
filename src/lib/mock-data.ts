@@ -44,6 +44,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Sudirman No.1, Jakarta Selatan",
     notes: "Major enterprise client, partnered since 2022.",
     createdAt: "2022-01-15",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2022-01-15",
   },
   {
     id: "comp2",
@@ -54,6 +57,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Gatot Subroto No.12, Jakarta",
     notes: "Fast-growing SaaS startup. Key decision-maker: CEO.",
     createdAt: "2023-11-20",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2023-11-20",
   },
   {
     id: "comp3",
@@ -64,6 +70,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Thamrin No.45, Jakarta Pusat",
     notes: "Retail chain with 50+ stores across Java.",
     createdAt: "2024-05-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-05-10",
   },
   {
     id: "comp4",
@@ -74,6 +83,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Kuningan Mulia No.8, Jakarta Selatan",
     notes: "Leading digital payment platform in Indonesia.",
     createdAt: "2023-06-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2023-06-01",
   },
   {
     id: "comp5",
@@ -84,6 +96,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Cempaka Putih No.22, Jakarta Pusat",
     notes: "National logistics company. Cancelled subscription — budget cuts.",
     createdAt: "2022-12-08",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2022-12-08",
   },
   {
     id: "comp6",
@@ -94,6 +109,9 @@ export const COMPANIES: Company[] = [
     address: "Jl. Casablanca No.15, Jakarta Selatan",
     notes: "Digital media conglomerate evaluating our platform.",
     createdAt: "2024-11-15",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-11-15",
   },
 ];
 
@@ -109,6 +127,9 @@ export const CONTACTS: Contact[] = [
     status: "customer",
     notes: "Long-term enterprise client since 2022.",
     createdAt: "2022-03-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2022-03-10",
   },
   {
     id: "c2",
@@ -120,6 +141,9 @@ export const CONTACTS: Contact[] = [
     status: "prospect",
     notes: "Interested in the enterprise plan. Follow up next week.",
     createdAt: "2024-01-15",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-01-15",
   },
   {
     id: "c3",
@@ -131,6 +155,9 @@ export const CONTACTS: Contact[] = [
     status: "lead",
     notes: "Met at Jakarta Tech Summit 2024.",
     createdAt: "2024-06-20",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-06-20",
   },
   {
     id: "c4",
@@ -142,6 +169,9 @@ export const CONTACTS: Contact[] = [
     status: "customer",
     notes: "Upgraded to premium tier in Q3 2024.",
     createdAt: "2023-08-05",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2023-08-05",
   },
   {
     id: "c5",
@@ -153,6 +183,9 @@ export const CONTACTS: Contact[] = [
     status: "churned",
     notes: "Cancelled subscription — budget cuts. Re-engage in 6 months.",
     createdAt: "2023-02-18",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2023-02-18",
   },
   {
     id: "c6",
@@ -164,6 +197,9 @@ export const CONTACTS: Contact[] = [
     status: "prospect",
     notes: "Evaluating vs competitor. Send case studies.",
     createdAt: "2025-01-08",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-01-08",
   },
 ];
 
@@ -179,6 +215,9 @@ export const LEADS: Lead[] = [
     estimatedValue: 50_000_000,
     notes: "Andi referred internally. High interest in analytics dashboard.",
     createdAt: "2025-02-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-01",
   },
   {
     id: "l2",
@@ -190,6 +229,9 @@ export const LEADS: Lead[] = [
     estimatedValue: 30_000_000,
     notes: "Signed up through website form. Demo scheduled.",
     createdAt: "2025-02-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-10",
   },
   {
     id: "l3",
@@ -201,6 +243,9 @@ export const LEADS: Lead[] = [
     estimatedValue: 25_000_000,
     notes: "Met at Indonesia Tech Expo 2025. Needs POS system integration.",
     createdAt: "2025-03-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-01",
   },
   {
     id: "l4",
@@ -212,6 +257,9 @@ export const LEADS: Lead[] = [
     estimatedValue: 100_000_000,
     notes: "Cold outreach to digital banking division. Awaiting callback.",
     createdAt: "2025-02-20",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-20",
   },
   {
     id: "l5",
@@ -223,6 +271,9 @@ export const LEADS: Lead[] = [
     estimatedValue: 15_000_000,
     notes: "Budget too small for our minimum engagement. Revisit next quarter.",
     createdAt: "2025-01-25",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-01-25",
   },
 ];
 
@@ -239,6 +290,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-03-31",
     notes: "Renewed for 2 years.",
     createdAt: "2025-01-15",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-01-15",
   },
   {
     id: "d2",
@@ -251,6 +305,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-04-15",
     notes: "Proposal sent, awaiting review.",
     createdAt: "2025-02-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-01",
   },
   {
     id: "d3",
@@ -263,6 +320,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-05-01",
     notes: "Initial discovery call scheduled.",
     createdAt: "2025-02-20",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-20",
   },
   {
     id: "d4",
@@ -275,6 +335,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2024-09-30",
     notes: "Upgrade completed, onboarding done.",
     createdAt: "2024-07-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-07-10",
   },
   {
     id: "d5",
@@ -287,6 +350,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-02-28",
     notes: "Lost to competitor on pricing.",
     createdAt: "2024-12-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2024-12-01",
   },
   {
     id: "d6",
@@ -299,6 +365,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-04-30",
     notes: "Negotiating on seat count discount.",
     createdAt: "2025-01-20",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-01-20",
   },
   {
     id: "d7",
@@ -311,6 +380,9 @@ export const DEALS: Deal[] = [
     expectedCloseDate: "2025-05-15",
     notes: "Upsell opportunity, good fit.",
     createdAt: "2025-03-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-01",
   },
 ];
 
@@ -327,6 +399,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "c2",
     assignee: "Sales Team",
     createdAt: "2025-03-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-10",
   },
   {
     id: "t2",
@@ -339,6 +414,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "comp1",
     assignee: "Account Manager",
     createdAt: "2025-03-05",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-05",
   },
   {
     id: "t3",
@@ -351,6 +429,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "l3",
     assignee: "Sales Team",
     createdAt: "2025-03-08",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-08",
   },
   {
     id: "t4",
@@ -363,6 +444,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "d6",
     assignee: "Legal",
     createdAt: "2025-03-12",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-12",
   },
   {
     id: "t5",
@@ -375,6 +459,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "comp4",
     assignee: "Account Manager",
     createdAt: "2025-02-25",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-02-25",
   },
   {
     id: "t6",
@@ -387,6 +474,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "c5",
     assignee: "Marketing",
     createdAt: "2025-03-01",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-01",
   },
   {
     id: "t7",
@@ -399,6 +489,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "l4",
     assignee: "Sales Team",
     createdAt: "2025-03-05",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-05",
   },
   {
     id: "t8",
@@ -411,6 +504,9 @@ export const TASKS: Task[] = [
     linkedEntityId: "c1",
     assignee: "Marketing",
     createdAt: "2025-03-10",
+    createdBy: "Andi Pratama",
+    lastModifiedBy: "Andi Pratama",
+    lastModifiedAt: "2025-03-10",
   },
 ];
 

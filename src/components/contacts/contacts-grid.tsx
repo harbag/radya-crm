@@ -6,13 +6,22 @@ import { Users } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
+  LongTextCell,
   createStatusBadgeCell,
+  createAvatarNameCell,
   DateCell,
+  DateTimeCell,
   createRelationCell,
 } from "@/components/shared/grid-cells";
 import { useContactsStore } from "@/store/use-contacts-store";
 import { useCompaniesStore } from "@/store/use-companies-store";
 import { STATUS_CONFIG, type Contact } from "@/lib/mock-data";
+
+const ContactNameCell = createAvatarNameCell<Contact>(
+  (c) => c.profileImageUrl,
+  "bg-indigo-100",
+  "text-indigo-700"
+);
 
 const COLUMN_WIDTHS: Record<string, number> = {
   select: 40,
@@ -24,9 +33,14 @@ const COLUMN_WIDTHS: Record<string, number> = {
   companyId: 160,
   status: 120,
   notes: 220,
-  createdAt: 110,
+  createdAt: 130,
+  createdBy: 130,
+  lastModifiedAt: 150,
+  lastModifiedBy: 130,
   actions: 44,
 };
+
+const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
 
 const StatusCell = createStatusBadgeCell<Contact>(STATUS_CONFIG, "status");
 
@@ -56,7 +70,7 @@ export default function ContactsGrid({
       accessorKey: "name",
       header: "Name",
       size: COLUMN_WIDTHS.name,
-      cell: EditableTextCell,
+      cell: ContactNameCell,
       filterFn: "includesString",
       meta: { cellType: "text" as const, dataType: "text" as const },
     },
@@ -104,17 +118,45 @@ export default function ContactsGrid({
       accessorKey: "notes",
       header: "Notes",
       size: COLUMN_WIDTHS.notes,
-      cell: EditableTextCell,
+      cell: LongTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const, dataType: "text" as const },
+      meta: { cellType: "longtext" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
-      cell: DateCell,
+      cell: DateTimeCell,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "createdBy",
+      header: "Created By",
+      size: COLUMN_WIDTHS.createdBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
+    },
+    {
+      accessorKey: "lastModifiedAt",
+      header: "Modified",
+      size: COLUMN_WIDTHS.lastModifiedAt,
+      cell: DateTimeCell,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "lastModifiedBy",
+      header: "Modified By",
+      size: COLUMN_WIDTHS.lastModifiedBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
     },
   ];
 
@@ -140,6 +182,7 @@ export default function ContactsGrid({
       onDelete={deleteContacts}
       onRowClick={onRowClick}
       toolbarExtra={toolbarExtra}
+      defaultHiddenColumns={AUDIT_HIDDEN_COLUMNS}
     />
   );
 }

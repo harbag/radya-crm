@@ -45,7 +45,7 @@ export default function ViewSwitcher({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
             current === id
-              ? "bg-white text-zinc-900 shadow-sm"
+              ? "bg-background text-foreground shadow-sm"
               : "text-zinc-500 hover:text-zinc-700"
           )}
         >

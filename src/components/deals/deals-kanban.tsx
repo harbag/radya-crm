@@ -33,7 +33,7 @@ export default function DealsKanban() {
   ).length;
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-2.5">
         <div className="flex items-center gap-2">

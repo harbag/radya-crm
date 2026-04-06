@@ -12,6 +12,8 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type RowSelectionState,
+  type ColumnSizingState,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import type { EditingCell, CellType } from "./grid-cells";
 import FilterBuilder, {
@@ -19,6 +21,7 @@ import FilterBuilder, {
   type FilterColumnDef,
   type FilterState,
 } from "./filter-builder";
+import FieldVisibilityPanel, { type FieldInfo } from "./field-visibility-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,6 +43,7 @@ import {
   Layers,
   ArrowUpDown,
   X,
+  EyeOff,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,6 +71,8 @@ type DataGridProps<T extends { id: string }> = {
   toolbarExtra?: React.ReactNode;
   addLabel?: string;
   rowActions?: RowAction<T>[];
+  /** Column IDs to hide by default (e.g. audit fields) */
+  defaultHiddenColumns?: string[];
 };
 
 const SYSTEM_COLS = new Set(["select", "rowNum", "actions"]);
@@ -86,11 +92,26 @@ export default function DataGrid<T extends { id: string }>({
   toolbarExtra,
   addLabel,
   rowActions = [],
+  defaultHiddenColumns = [],
 }: DataGridProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(() => {
+    const sizing: ColumnSizingState = {};
+    for (const [k, v] of Object.entries(columnWidths)) {
+      sizing[k] = v;
+    }
+    return sizing;
+  });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const vis: VisibilityState = {};
+    for (const col of defaultHiddenColumns) {
+      vis[col] = false;
+    }
+    return vis;
+  });
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<EditingCell | null>(null);
   const [filterState, setFilterState] = useState<FilterState>({
@@ -130,6 +151,20 @@ export default function DataGrid<T extends { id: string }>({
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [showSortPanel]);
+
+  // Derive field info for visibility panel
+  const fieldInfos: FieldInfo[] = useMemo(
+    () =>
+      userColumns.map((col, idx) => {
+        const id = (col as any).accessorKey ?? col.id ?? "";
+        return {
+          id,
+          label: typeof col.header === "string" ? col.header : id,
+          locked: idx === 0, // Primary field cannot be hidden
+        };
+      }),
+    [userColumns]
+  );
 
   // Derive navigable column IDs from user columns
   const userColumnIds = useMemo(
@@ -234,7 +269,7 @@ export default function DataGrid<T extends { id: string }>({
               "select-none text-xs",
               isHighlighted
                 ? "font-semibold text-indigo-600"
-                : "text-zinc-400"
+                : "text-muted-foreground/70"
             )}
           >
             {row.index + 1}
@@ -251,7 +286,7 @@ export default function DataGrid<T extends { id: string }>({
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-full w-full items-center justify-center text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-zinc-700">
+            <button className="flex h-full w-full items-center justify-center text-muted-foreground/70 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground/80">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
@@ -286,11 +321,14 @@ export default function DataGrid<T extends { id: string }>({
     data: filteredData,
     columns,
     getRowId: (row) => row.id,
-    state: { sorting, columnFilters, globalFilter, rowSelection },
+    state: { sorting, columnFilters, globalFilter, rowSelection, columnSizing, columnVisibility },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
+    onColumnSizingChange: setColumnSizing,
+    onColumnVisibilityChange: setColumnVisibility,
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -495,7 +533,16 @@ export default function DataGrid<T extends { id: string }>({
 
         case "Enter": {
           e.preventDefault();
-          if (cellType === "text" || cellType === "dropdown") {
+          if (cellType === "text" || cellType === "dropdown" || cellType === "longtext") {
+            setEditingCell({ ...selectedCell });
+          }
+          break;
+        }
+
+        case " ": {
+          // Shift+Space: expand long text cell
+          if (e.shiftKey && cellType === "longtext") {
+            e.preventDefault();
             setEditingCell({ ...selectedCell });
           }
           break;
@@ -509,7 +556,7 @@ export default function DataGrid<T extends { id: string }>({
 
         case "Backspace":
         case "Delete": {
-          if (cellType === "text") {
+          if (cellType === "text" || cellType === "longtext") {
             e.preventDefault();
             onUpdate(selectedCell.rowId, { [selectedCell.columnId]: "" });
           }
@@ -517,9 +564,9 @@ export default function DataGrid<T extends { id: string }>({
         }
 
         default: {
-          // Alphanumeric type-to-edit on text cells
+          // Alphanumeric type-to-edit on text/longtext cells
           if (
-            cellType === "text" &&
+            (cellType === "text" || cellType === "longtext") &&
             e.key.length === 1 &&
             !e.ctrlKey &&
             !e.metaKey &&
@@ -570,21 +617,18 @@ export default function DataGrid<T extends { id: string }>({
     setRowSelection({});
   }
 
-  const tableMinWidth = Object.values(columnWidths).reduce(
-    (a, b) => a + (b ?? 0),
-    0
-  );
+  const tableMinWidth = table.getTotalSize();
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-background">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold text-zinc-900 sm:text-base">
+            <h1 className="text-sm font-semibold text-foreground sm:text-base">
               {entityName}
             </h1>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {table.getFilteredRowModel().rows.length}
             </span>
           </div>
@@ -596,7 +640,7 @@ export default function DataGrid<T extends { id: string }>({
 
           {/* Global search */}
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70" />
             <Input
               placeholder="Search..."
               value={globalFilter}
@@ -614,6 +658,13 @@ export default function DataGrid<T extends { id: string }>({
             />
           )}
 
+          {/* Field visibility */}
+          <FieldVisibilityPanel
+            fields={fieldInfos}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={setColumnVisibility}
+          />
+
           {/* Sort builder */}
           {sortableColumns.length > 0 && (
             <div className="relative" ref={sortPanelRef}>
@@ -623,7 +674,7 @@ export default function DataGrid<T extends { id: string }>({
                   "flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
                   sorting.length > 0
                     ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                    : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
@@ -636,8 +687,8 @@ export default function DataGrid<T extends { id: string }>({
               </button>
 
               {showSortPanel && (
-                <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-lg border border-border bg-background p-3 shadow-lg">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
                     Sort by
                   </p>
 
@@ -645,7 +696,7 @@ export default function DataGrid<T extends { id: string }>({
                   <div className="flex flex-col gap-1.5">
                     {sorting.map((s, idx) => (
                       <div key={s.id} className="flex items-center gap-1.5">
-                        <span className="w-8 shrink-0 text-[10px] text-zinc-400">
+                        <span className="w-8 shrink-0 text-[10px] text-muted-foreground/70">
                           {idx === 0 ? "by" : "then"}
                         </span>
                         {/* Column selector */}
@@ -658,7 +709,7 @@ export default function DataGrid<T extends { id: string }>({
                               )
                             )
                           }
-                          className="h-7 flex-1 rounded border border-zinc-200 bg-white px-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                          className="h-7 flex-1 rounded border border-border bg-background px-1.5 text-xs text-foreground/80 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                         >
                           {sortableColumns.map((col) => (
                             <option key={col.id} value={col.id}>
@@ -675,7 +726,7 @@ export default function DataGrid<T extends { id: string }>({
                               )
                             )
                           }
-                          className="flex h-7 w-16 shrink-0 items-center justify-center rounded border border-zinc-200 bg-white text-xs text-zinc-600 hover:bg-zinc-50"
+                          className="flex h-7 w-16 shrink-0 items-center justify-center rounded border border-border bg-background text-xs text-muted-foreground hover:bg-muted"
                         >
                           {s.desc ? "Z → A" : "A → Z"}
                         </button>
@@ -684,7 +735,7 @@ export default function DataGrid<T extends { id: string }>({
                           onClick={() =>
                             setSorting((prev) => prev.filter((_, i) => i !== idx))
                           }
-                          className="text-zinc-400 hover:text-zinc-700"
+                          className="text-muted-foreground/70 hover:text-foreground/80"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -711,7 +762,7 @@ export default function DataGrid<T extends { id: string }>({
                   {sorting.length > 0 && (
                     <button
                       onClick={() => setSorting([])}
-                      className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600"
+                      className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground"
                     >
                       <X className="h-3 w-3" />
                       Clear all
@@ -719,7 +770,7 @@ export default function DataGrid<T extends { id: string }>({
                   )}
 
                   {sorting.length === 0 && (
-                    <p className="py-2 text-center text-xs text-zinc-400">
+                    <p className="py-2 text-center text-xs text-muted-foreground/70">
                       No sorts applied
                     </p>
                   )}
@@ -737,7 +788,7 @@ export default function DataGrid<T extends { id: string }>({
                   "flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
                   groupBy
                     ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                    : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
                 <Layers className="h-3.5 w-3.5" />
@@ -750,8 +801,8 @@ export default function DataGrid<T extends { id: string }>({
               </button>
 
               {showGroupPanel && (
-                <div className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-lg border border-border bg-background p-3 shadow-lg">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
                     Group by
                   </p>
                   {groupBy && (
@@ -782,7 +833,7 @@ export default function DataGrid<T extends { id: string }>({
                             setCollapsedGroups(new Set());
                             setShowGroupPanel(false);
                           }}
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 hover:bg-zinc-50"
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted"
                         >
                           <span className="h-3.5 w-3.5 rounded-sm border border-zinc-300" />
                           {col.label}
@@ -852,19 +903,20 @@ export default function DataGrid<T extends { id: string }>({
           }}
         >
           <thead className="sticky top-0 z-10">
-            <tr className="border-b border-zinc-200 bg-zinc-50">
+            <tr className="border-b border-border bg-muted">
               {table.getFlatHeaders().map((header) => {
                 const canSort = header.column.getCanSort();
                 const sortDir = header.column.getIsSorted();
                 const isColHighlighted =
                   selectedCell?.columnId === header.column.id;
+                const isSystemCol = SYSTEM_COLS.has(header.column.id);
                 return (
                   <th
                     key={header.id}
                     className={cn(
-                      "border-r border-zinc-200 px-2 py-2 text-left",
+                      "relative border-r border-border px-2 py-2 text-left",
                       canSort &&
-                        "cursor-pointer select-none hover:bg-zinc-100",
+                        "cursor-pointer select-none hover:bg-muted/80",
                       isColHighlighted && "bg-indigo-50"
                     )}
                     style={{ width: header.column.getSize() }}
@@ -872,7 +924,7 @@ export default function DataGrid<T extends { id: string }>({
                   >
                     <div
                       className={cn(
-                        "flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500",
+                        "flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
                         isColHighlighted && "text-indigo-600"
                       )}
                     >
@@ -881,7 +933,7 @@ export default function DataGrid<T extends { id: string }>({
                         header.getContext()
                       )}
                       {canSort && (
-                        <span className="ml-auto text-zinc-400">
+                        <span className="ml-auto text-muted-foreground/70">
                           {sortDir === "asc" ? (
                             <ChevronUp className="h-3 w-3" />
                           ) : sortDir === "desc" ? (
@@ -892,6 +944,19 @@ export default function DataGrid<T extends { id: string }>({
                         </span>
                       )}
                     </div>
+                    {/* Column resize handle */}
+                    {!isSystemCol && header.column.getCanResize() && (
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn(
+                          "absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none",
+                          "opacity-0 hover:opacity-100 hover:bg-indigo-400",
+                          header.column.getIsResizing() && "opacity-100 bg-indigo-500"
+                        )}
+                      />
+                    )}
                   </th>
                 );
               })}
@@ -906,20 +971,20 @@ export default function DataGrid<T extends { id: string }>({
                 return (
                   <React.Fragment key={value}>
                     {/* Group header */}
-                    <tr className="border-b border-zinc-200 bg-zinc-50/80">
+                    <tr className="border-b border-border bg-muted/80">
                       <td colSpan={allColumnCount} className="px-3 py-1.5">
                         <button
-                          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-900"
+                          className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 hover:text-foreground"
                           onClick={() => toggleGroup(value)}
                         >
                           <ChevronRight
                             className={cn(
-                              "h-3.5 w-3.5 text-zinc-400 transition-transform duration-150",
+                              "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-150",
                               !isCollapsed && "rotate-90"
                             )}
                           />
                           <span>{getGroupDisplayValue(value)}</span>
-                          <span className="font-normal text-zinc-400">
+                          <span className="font-normal text-muted-foreground/70">
                             ({groupRows.length})
                           </span>
                         </button>
@@ -931,8 +996,8 @@ export default function DataGrid<T extends { id: string }>({
                         <tr
                           key={row.id}
                           className={cn(
-                            "group border-b border-zinc-100 transition-colors",
-                            row.getIsSelected() ? "bg-indigo-50" : "hover:bg-zinc-50/70",
+                            "group border-b border-border/50 transition-colors",
+                            row.getIsSelected() ? "bg-indigo-50" : "hover:bg-muted/70",
                             onRowClick && "cursor-pointer"
                           )}
                           style={{ height: 36 }}
@@ -952,7 +1017,7 @@ export default function DataGrid<T extends { id: string }>({
                                 data-row={row.id}
                                 data-col={cell.column.id}
                                 className={cn(
-                                  "h-9 overflow-hidden border-r border-zinc-100 p-0",
+                                  "h-9 overflow-hidden border-r border-border/50 p-0",
                                   isEditing && "ring-2 ring-inset ring-indigo-500",
                                   isSelected && !isEditing && "ring-2 ring-inset ring-indigo-400 bg-indigo-50/30",
                                   isSystemCol && "text-center"
@@ -1002,8 +1067,8 @@ export default function DataGrid<T extends { id: string }>({
                     <tr
                       key={row.id}
                       className={cn(
-                        "group border-b border-zinc-100 transition-colors",
-                        row.getIsSelected() ? "bg-indigo-50" : "hover:bg-zinc-50/70",
+                        "group border-b border-border/50 transition-colors",
+                        row.getIsSelected() ? "bg-indigo-50" : "hover:bg-muted/70",
                         onRowClick && "cursor-pointer"
                       )}
                       style={{ height: 36 }}
@@ -1024,7 +1089,7 @@ export default function DataGrid<T extends { id: string }>({
                             data-row={row.id}
                             data-col={cell.column.id}
                             className={cn(
-                              "h-9 overflow-hidden border-r border-zinc-100 p-0",
+                              "h-9 overflow-hidden border-r border-border/50 p-0",
                               isEditing && "ring-2 ring-inset ring-indigo-500",
                               isSelected &&
                                 !isEditing &&
@@ -1100,7 +1165,7 @@ export default function DataGrid<T extends { id: string }>({
                 setEditingCell({ rowId: id, columnId: firstCol });
               }, 30);
             }}
-            className="flex w-full items-center gap-2 border-b border-zinc-100 px-[88px] py-2 text-xs text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-zinc-600"
+            className="flex w-full items-center gap-2 border-b border-border/50 px-[88px] py-2 text-xs text-muted-foreground/70 transition-colors hover:bg-muted hover:text-muted-foreground"
             style={{ minWidth: tableMinWidth }}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -1110,7 +1175,7 @@ export default function DataGrid<T extends { id: string }>({
 
         {/* Empty state */}
         {table.getFilteredRowModel().rows.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/70">
             <EntityIcon className="mb-2 h-8 w-8 opacity-40" />
             <p className="text-sm font-medium">
               No {entityName.toLowerCase()} found

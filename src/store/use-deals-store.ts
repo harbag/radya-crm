@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { DEALS, DEAL_STAGE_CONFIG, type Deal, type DealStage } from "@/lib/mock-data";
 import { useActivitiesStore } from "./use-activities-store";
+import { useUserStore } from "./use-user-store";
 
 type DealsState = {
   deals: Deal[];
-  addDeal: (partial: Omit<Deal, "id" | "createdAt">) => string;
+  addDeal: (partial: Omit<Deal, "id" | "createdAt" | "createdBy" | "lastModifiedBy" | "lastModifiedAt">) => string;
   updateDeal: (id: string, updates: Partial<Deal>) => void;
   deleteDeals: (ids: string[]) => void;
   moveDeal: (dealId: string, newStage: DealStage, newIndex: number) => void;
@@ -15,13 +16,18 @@ export const useDealsStore = create<DealsState>((set) => ({
 
   addDeal: (partial) => {
     const id = `d${Date.now()}`;
+    const now = new Date().toISOString();
+    const userName = useUserStore.getState().user.name;
     set((state) => ({
       deals: [
         ...state.deals,
         {
           ...partial,
           id,
-          createdAt: new Date().toISOString().split("T")[0],
+          createdAt: now,
+          createdBy: userName,
+          lastModifiedBy: userName,
+          lastModifiedAt: now,
         },
       ],
     }));
@@ -51,7 +57,7 @@ export const useDealsStore = create<DealsState>((set) => ({
       }
       return {
         deals: state.deals.map((d) =>
-          d.id === id ? { ...d, ...updates } : d
+          d.id === id ? { ...d, ...updates, lastModifiedBy: useUserStore.getState().user.name, lastModifiedAt: new Date().toISOString() } : d
         ),
       };
     }),

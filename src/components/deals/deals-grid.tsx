@@ -6,11 +6,14 @@ import { KanbanSquare } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
+  LongTextCell,
   createStatusBadgeCell,
   DateCell,
+  DateTimeCell,
   CurrencyCell,
   createRelationCell,
 } from "@/components/shared/grid-cells";
+import { createAttachmentCell } from "@/components/shared/grid-cells-attachment";
 import { useDealsStore } from "@/store/use-deals-store";
 import { useContactsStore } from "@/store/use-contacts-store";
 import { useCompaniesStore } from "@/store/use-companies-store";
@@ -26,10 +29,18 @@ const COLUMN_WIDTHS: Record<string, number> = {
   stage: 120,
   probability: 90,
   expectedCloseDate: 120,
+  attachments: 100,
   notes: 200,
-  createdAt: 110,
+  createdAt: 130,
+  createdBy: 130,
+  lastModifiedAt: 150,
+  lastModifiedBy: 130,
   actions: 44,
 };
+
+const AttachmentCell = createAttachmentCell<Deal>("deal");
+
+const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
 
 const StageCell = createStatusBadgeCell<Deal>(DEAL_STAGE_CONFIG, "stage");
 
@@ -116,20 +127,57 @@ export default function DealsGrid({
       meta: { cellType: "readonly" as const, dataType: "date" as const },
     },
     {
+      id: "attachments",
+      header: "Files",
+      size: COLUMN_WIDTHS.attachments,
+      cell: AttachmentCell,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
+    },
+    {
       accessorKey: "notes",
       header: "Notes",
       size: COLUMN_WIDTHS.notes,
-      cell: EditableTextCell,
+      cell: LongTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const, dataType: "text" as const },
+      meta: { cellType: "longtext" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
-      cell: DateCell,
+      cell: DateTimeCell,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "createdBy",
+      header: "Created By",
+      size: COLUMN_WIDTHS.createdBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
+    },
+    {
+      accessorKey: "lastModifiedAt",
+      header: "Modified",
+      size: COLUMN_WIDTHS.lastModifiedAt,
+      cell: DateTimeCell,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "lastModifiedBy",
+      header: "Modified By",
+      size: COLUMN_WIDTHS.lastModifiedBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
     },
   ];
 
@@ -158,6 +206,7 @@ export default function DealsGrid({
       titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Deal"
+      defaultHiddenColumns={AUDIT_HIDDEN_COLUMNS}
     />
   );
 }

@@ -105,7 +105,7 @@ export default function CalendarView<T extends { id: string }>({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex items-center gap-2">

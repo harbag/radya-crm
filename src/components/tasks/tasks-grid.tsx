@@ -6,8 +6,10 @@ import { CheckSquare } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
+  LongTextCell,
   createStatusBadgeCell,
   DateCell,
+  DateTimeCell,
 } from "@/components/shared/grid-cells";
 import { useTasksStore } from "@/store/use-tasks-store";
 import {
@@ -25,9 +27,14 @@ const COLUMN_WIDTHS: Record<string, number> = {
   dueDate: 110,
   assignee: 130,
   description: 200,
-  createdAt: 110,
+  createdAt: 130,
+  createdBy: 130,
+  lastModifiedAt: 150,
+  lastModifiedBy: 130,
   actions: 44,
 };
+
+const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
 
 const StatusCell = createStatusBadgeCell<Task>(TASK_STATUS_CONFIG, "status");
 const PriorityCell = createStatusBadgeCell<Task>(
@@ -100,17 +107,45 @@ export default function TasksGrid({
       accessorKey: "description",
       header: "Description",
       size: COLUMN_WIDTHS.description,
-      cell: EditableTextCell,
+      cell: LongTextCell,
       enableColumnFilter: false,
-      meta: { cellType: "text" as const, dataType: "text" as const },
+      meta: { cellType: "longtext" as const, dataType: "text" as const },
     },
     {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
-      cell: DateCell,
+      cell: DateTimeCell,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "createdBy",
+      header: "Created By",
+      size: COLUMN_WIDTHS.createdBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
+    },
+    {
+      accessorKey: "lastModifiedAt",
+      header: "Modified",
+      size: COLUMN_WIDTHS.lastModifiedAt,
+      cell: DateTimeCell,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "date" as const },
+    },
+    {
+      accessorKey: "lastModifiedBy",
+      header: "Modified By",
+      size: COLUMN_WIDTHS.lastModifiedBy,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const, dataType: "text" as const },
+      cell: ({ getValue }: { getValue: () => string }) => (
+        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
+      ),
     },
   ];
 
@@ -139,6 +174,7 @@ export default function TasksGrid({
       titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Task"
+      defaultHiddenColumns={AUDIT_HIDDEN_COLUMNS}
     />
   );
 }
