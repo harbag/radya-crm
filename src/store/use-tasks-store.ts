@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { TASKS, type Task, type TaskStatus } from "@/lib/mock-data";
 import { useActivitiesStore } from "./use-activities-store";
+import { useUserStore } from "./use-user-store";
 
 type TasksState = {
   tasks: Task[];
-  addTask: (partial: Omit<Task, "id" | "createdAt">) => string;
+  addTask: (partial: Omit<Task, "id" | "createdAt" | "createdBy" | "lastModifiedBy" | "lastModifiedAt">) => string;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   deleteTasks: (ids: string[]) => void;
@@ -17,13 +18,18 @@ export const useTasksStore = create<TasksState>((set) => ({
 
   addTask: (partial) => {
     const id = `t${Date.now()}`;
+    const now = new Date().toISOString();
+    const userName = useUserStore.getState().user.name;
     set((state) => ({
       tasks: [
         ...state.tasks,
         {
           ...partial,
           id,
-          createdAt: new Date().toISOString().split("T")[0],
+          createdAt: now,
+          createdBy: userName,
+          lastModifiedBy: userName,
+          lastModifiedAt: now,
         },
       ],
     }));
@@ -33,7 +39,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   updateTask: (id, updates) =>
     set((state) => ({
       tasks: state.tasks.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
+        t.id === id ? { ...t, ...updates, lastModifiedBy: useUserStore.getState().user.name, lastModifiedAt: new Date().toISOString() } : t
       ),
     })),
 

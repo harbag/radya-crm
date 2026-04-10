@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import type { CellContext, RowData } from "@tanstack/react-table";
 import {
   Select,
@@ -9,14 +9,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/mock-data";
+import { Maximize2 } from "lucide-react";
 
 import type { FilterDataType } from "./filter-builder";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type EditingCell = { rowId: string; columnId: string };
-export type CellType = "text" | "dropdown" | "readonly";
+export type CellType = "text" | "dropdown" | "readonly" | "longtext";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,7 +67,7 @@ export function EditableTextCell<T extends { id: string }>({
 
     return (
       <input
-        className="h-full w-full bg-white px-2 text-sm outline-none"
+        className="h-full w-full bg-background px-2 text-sm outline-none"
         defaultValue={initialChar ?? value}
         autoFocus
         ref={(el) => {
@@ -220,6 +229,156 @@ export function CurrencyCell<T extends { id: string }>({
   );
 }
 
+// ── Long Text Cell (expandable multi-line) ───────────────────────────────────
+export function LongTextCell<T extends { id: string }>({
+  getValue,
+  row,
+  column,
+  table,
+}: CellContext<T, string>) {
+  const { editingCell, onUpdate, commitEdit, initialCharRef } =
+    table.options.meta!;
+  const isEditing =
+    editingCell?.rowId === row.id && editingCell?.columnId === column.id;
+  const value = getValue() ?? "";
+  const savedRef = useRef(false);
+  const [expandedOpen, setExpandedOpen] = useState(false);
+  const [expandedValue, setExpandedValue] = useState(value);
+
+  const handleOpenExpanded = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setExpandedValue(value);
+      setExpandedOpen(true);
+    },
+    [value]
+  );
+
+  const handleSaveExpanded = useCallback(() => {
+    if (expandedValue !== value) {
+      onUpdate(row.original.id, { [column.id]: expandedValue });
+    }
+    setExpandedOpen(false);
+  }, [expandedValue, value, onUpdate, row.original.id, column.id]);
+
+  if (isEditing && !expandedOpen) {
+    const initialChar = initialCharRef.current;
+    initialCharRef.current = null;
+    return (
+      <input
+        className="h-full w-full bg-background px-2 text-sm outline-none"
+        defaultValue={initialChar ?? value}
+        autoFocus
+        ref={(el) => {
+          if (el && initialChar) {
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
+        }}
+        onBlur={(e) => {
+          if (!savedRef.current && e.target.value !== value) {
+            onUpdate(row.original.id, { [column.id]: e.target.value });
+          }
+          savedRef.current = false;
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const newVal = e.currentTarget.value;
+            if (newVal !== value) {
+              onUpdate(row.original.id, { [column.id]: newVal });
+              savedRef.current = true;
+            }
+            commitEdit("enter");
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            savedRef.current = true;
+            commitEdit("escape");
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            const newVal = e.currentTarget.value;
+            if (newVal !== value) {
+              onUpdate(row.original.id, { [column.id]: newVal });
+              savedRef.current = true;
+            }
+            commitEdit(e.shiftKey ? "shift-tab" : "tab");
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="group/longtext flex h-full w-full cursor-default items-center px-2 text-sm">
+        {value ? (
+          <span className="flex-1 truncate whitespace-pre-line line-clamp-1">
+            {value}
+          </span>
+        ) : (
+          <span className="text-zinc-300">&mdash;</span>
+        )}
+        <button
+          onClick={handleOpenExpanded}
+          className="ml-1 shrink-0 opacity-0 transition-opacity group-hover/longtext:opacity-100"
+          title="Expand (Shift+Space)"
+        >
+          <Maximize2 className="h-3 w-3 text-zinc-400 hover:text-zinc-600" />
+        </button>
+      </div>
+
+      <Dialog open={expandedOpen} onOpenChange={setExpandedOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium text-zinc-700">
+              {typeof column.columnDef.header === "string"
+                ? column.columnDef.header
+                : column.id}
+            </DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={expandedValue}
+            onChange={(e) => setExpandedValue(e.target.value)}
+            className="min-h-[160px] text-sm"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExpandedOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveExpanded}>
+              Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ── DateTime Cell (full timestamp) ───────────────────────────────────────────
+export function DateTimeCell<T extends { id: string }>({
+  getValue,
+}: CellContext<T, string>) {
+  const value = getValue();
+  return (
+    <div className="flex h-full w-full items-center px-2 text-sm text-zinc-500">
+      {value
+        ? new Date(value).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "\u2014"}
+    </div>
+  );
+}
+
 // ── Relation Cell (FK lookup) ─────────────────────────────────────────────────
 export function createRelationCell<T extends { id: string }>(
   getItems: () => { id: string; name: string }[],
@@ -284,6 +443,114 @@ export function createRelationCell<T extends { id: string }>(
           ))}
         </SelectContent>
       </Select>
+    );
+  };
+}
+
+// ── Avatar + Name Cell ───────────────────────────────────────────────────────
+export function createAvatarNameCell<T extends { id: string }>(
+  getImageUrl: (row: T) => string | undefined,
+  bgColor: string = "bg-indigo-100",
+  textColor: string = "text-indigo-700"
+) {
+  return function AvatarNameCell({
+    getValue,
+    row,
+    column,
+    table,
+  }: CellContext<T, string>) {
+    const { editingCell, onUpdate, commitEdit, initialCharRef } =
+      table.options.meta!;
+    const isEditing =
+      editingCell?.rowId === row.id && editingCell?.columnId === column.id;
+    const value = getValue() ?? "";
+    const savedRef = useRef(false);
+    const imageUrl = getImageUrl(row.original);
+
+    if (isEditing) {
+      const initialChar = initialCharRef.current;
+      initialCharRef.current = null;
+      return (
+        <input
+          className="h-full w-full bg-background px-2 text-sm outline-none"
+          defaultValue={initialChar ?? value}
+          autoFocus
+          ref={(el) => {
+            if (el && initialChar) {
+              el.setSelectionRange(el.value.length, el.value.length);
+            }
+          }}
+          onBlur={(e) => {
+            if (!savedRef.current && e.target.value !== value) {
+              onUpdate(row.original.id, { [column.id]: e.target.value });
+            }
+            savedRef.current = false;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const newVal = e.currentTarget.value;
+              if (newVal !== value) {
+                onUpdate(row.original.id, { [column.id]: newVal });
+                savedRef.current = true;
+              }
+              commitEdit("enter");
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              savedRef.current = true;
+              commitEdit("escape");
+            } else if (e.key === "Tab") {
+              e.preventDefault();
+              const newVal = e.currentTarget.value;
+              if (newVal !== value) {
+                onUpdate(row.original.id, { [column.id]: newVal });
+                savedRef.current = true;
+              }
+              commitEdit(e.shiftKey ? "shift-tab" : "tab");
+            }
+          }}
+        />
+      );
+    }
+
+    const initials = value
+      ? value
+          .split(" ")
+          .map((w: string) => w[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase()
+      : "";
+
+    return (
+      <div className="flex h-full w-full cursor-default items-center gap-2 px-2 text-sm">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-5 w-5 shrink-0 rounded-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : initials ? (
+          <div
+            className={cn(
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold",
+              bgColor,
+              textColor
+            )}
+          >
+            {initials}
+          </div>
+        ) : null}
+        {value ? (
+          <span className="truncate">{value}</span>
+        ) : (
+          <span className="text-zinc-300">&mdash;</span>
+        )}
+      </div>
     );
   };
 }

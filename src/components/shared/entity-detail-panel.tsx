@@ -16,6 +16,7 @@ import LinkedTasks from "./detail-sections/linked-tasks";
 import LinkedNotes from "./detail-sections/linked-notes";
 import LinkedDeals from "./detail-sections/linked-deals";
 import LinkedContacts from "./detail-sections/linked-contacts";
+import AttachmentManager from "./attachment-manager";
 import { useContactsStore } from "@/store/use-contacts-store";
 import { useCompaniesStore } from "@/store/use-companies-store";
 import { useDealsStore } from "@/store/use-deals-store";
@@ -57,6 +58,7 @@ function EntityDetailContent({
   // Build header info based on entity type
   let name = "";
   let subtitle = "";
+  let headerImageUrl: string | undefined;
   let overviewContent: React.ReactNode = null;
   let showDeals = false;
   let showContacts = false;
@@ -69,6 +71,7 @@ function EntityDetailContent({
     const company = companies.find((c) => c.id === contact.companyId);
     name = contact.name;
     subtitle = [contact.jobTitle, company?.name].filter(Boolean).join(" at ");
+    headerImageUrl = contact.profileImageUrl;
     showDeals = true;
     entityDeals = deals.filter((d) => d.contactId === entityId);
     overviewContent = (
@@ -85,6 +88,11 @@ function EntityDetailContent({
     if (!company) return <p className="p-4 text-sm text-zinc-400">Company not found</p>;
     name = company.name;
     subtitle = company.industry;
+    if (company.logoUrl) {
+      headerImageUrl = company.logoUrl;
+    } else if (company.website) {
+      try { headerImageUrl = `https://logo.clearbit.com/${new URL(company.website).hostname}`; } catch {}
+    }
     showDeals = true;
     showContacts = true;
     entityDeals = deals.filter((d) => d.companyId === entityId);
@@ -203,6 +211,9 @@ function EntityDetailContent({
     { id: "tasks", label: `Tasks (${linkedTasks.length})` },
     { id: "notes", label: `Notes (${linkedNotes.length})` },
   ];
+  if (entityType === "deal") {
+    tabs.push({ id: "attachments", label: "Attachments" });
+  }
   if (showDeals)
     tabs.push({ id: "deals", label: `Deals (${entityDeals.length})` });
   if (showContacts)
@@ -219,6 +230,7 @@ function EntityDetailContent({
             entityType={entityType}
             name={name}
             subtitle={subtitle}
+            imageUrl={headerImageUrl}
           />
         </SheetTitle>
         <SheetDescription className="sr-only">
@@ -265,6 +277,12 @@ function EntityDetailContent({
               onAdd={handleAddNote}
             />
           </TabsContent>
+
+          {entityType === "deal" && entityId && (
+            <TabsContent value="attachments" className="m-0">
+              <AttachmentManager entityType="deal" entityId={entityId} />
+            </TabsContent>
+          )}
 
           {showDeals && (
             <TabsContent value="deals" className="m-0">

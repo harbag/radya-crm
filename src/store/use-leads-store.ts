@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { LEADS, LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/lib/mock-data";
 import { useActivitiesStore } from "./use-activities-store";
+import { useUserStore } from "./use-user-store";
 
 type LeadsState = {
   leads: Lead[];
-  addLead: (partial: Omit<Lead, "id" | "createdAt">) => string;
+  addLead: (partial: Omit<Lead, "id" | "createdAt" | "createdBy" | "lastModifiedBy" | "lastModifiedAt">) => string;
   updateLead: (id: string, updates: Partial<Lead>) => void;
   deleteLeads: (ids: string[]) => void;
   moveLeadStatus: (leadId: string, newStatus: LeadStatus) => void;
@@ -16,13 +17,18 @@ export const useLeadsStore = create<LeadsState>((set) => ({
 
   addLead: (partial) => {
     const id = `l${Date.now()}`;
+    const now = new Date().toISOString();
+    const userName = useUserStore.getState().user.name;
     set((state) => ({
       leads: [
         ...state.leads,
         {
           ...partial,
           id,
-          createdAt: new Date().toISOString().split("T")[0],
+          createdAt: now,
+          createdBy: userName,
+          lastModifiedBy: userName,
+          lastModifiedAt: now,
         },
       ],
     }));
@@ -32,7 +38,7 @@ export const useLeadsStore = create<LeadsState>((set) => ({
   updateLead: (id, updates) =>
     set((state) => ({
       leads: state.leads.map((l) =>
-        l.id === id ? { ...l, ...updates } : l
+        l.id === id ? { ...l, ...updates, lastModifiedBy: useUserStore.getState().user.name, lastModifiedAt: new Date().toISOString() } : l
       ),
     })),
 

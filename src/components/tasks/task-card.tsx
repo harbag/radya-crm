@@ -14,7 +14,7 @@ export default function TaskCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-zinc-200 bg-white p-3 transition-shadow",
+        "rounded-lg border border-border bg-card p-3 transition-shadow",
         isDragging
           ? "shadow-xl ring-2 ring-indigo-400"
           : "shadow-sm hover:shadow-md"

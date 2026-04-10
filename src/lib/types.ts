@@ -1,10 +1,17 @@
 // ── Base ────────────────────────────────────────────────────────────────────
 export type EntityType = "contact" | "company" | "lead" | "deal" | "task";
 
+export type AuditFields = {
+  createdBy: string;
+  createdAt: string;
+  lastModifiedBy: string;
+  lastModifiedAt: string;
+};
+
 // ── Contact ─────────────────────────────────────────────────────────────────
 export type ContactStatus = "lead" | "prospect" | "customer" | "churned";
 
-export type Contact = {
+export type Contact = AuditFields & {
   id: string;
   name: string;
   email: string;
@@ -13,11 +20,12 @@ export type Contact = {
   jobTitle: string;
   status: ContactStatus;
   notes: string;
-  createdAt: string;
+  linkedinUrl?: string;
+  profileImageUrl?: string;
 };
 
 // ── Company ─────────────────────────────────────────────────────────────────
-export type Company = {
+export type Company = AuditFields & {
   id: string;
   name: string;
   industry: string;
@@ -25,7 +33,7 @@ export type Company = {
   phone: string;
   address: string;
   notes: string;
-  createdAt: string;
+  logoUrl?: string;
 };
 
 // ── Lead ────────────────────────────────────────────────────────────────────
@@ -39,7 +47,7 @@ export type LeadSource =
 
 export type LeadStatus = "new" | "contacted" | "qualified" | "unqualified";
 
-export type Lead = {
+export type Lead = AuditFields & {
   id: string;
   title: string;
   source: LeadSource;
@@ -48,7 +56,6 @@ export type Lead = {
   companyId: string | null;
   estimatedValue: number;
   notes: string;
-  createdAt: string;
 };
 
 // ── Deal ────────────────────────────────────────────────────────────────────
@@ -59,7 +66,7 @@ export type DealStage =
   | "closed_won"
   | "closed_lost";
 
-export type Deal = {
+export type Deal = AuditFields & {
   id: string;
   title: string;
   value: number;
@@ -69,14 +76,13 @@ export type Deal = {
   probability: number;
   expectedCloseDate: string;
   notes: string;
-  createdAt: string;
 };
 
 // ── Task ────────────────────────────────────────────────────────────────────
 export type TaskStatus = "todo" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 
-export type Task = {
+export type Task = AuditFields & {
   id: string;
   title: string;
   description: string;
@@ -86,7 +92,6 @@ export type Task = {
   linkedEntityType: EntityType | null;
   linkedEntityId: string | null;
   assignee: string;
-  createdAt: string;
 };
 
 // ── Note ────────────────────────────────────────────────────────────────────
@@ -119,4 +124,18 @@ export type Activity = {
   linkedEntityId: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
+};
+
+// ── Attachment ──────────────────────────────────────────────────────────────
+export type Attachment = {
+  id: string;
+  name: string;
+  type: string; // MIME type or "google_drive_link"
+  size: number;
+  url: string; // blob URL, data URL, or external link
+  thumbnailUrl?: string;
+  linkedEntityType: EntityType;
+  linkedEntityId: string;
+  createdAt: string;
+  createdBy: string;
 };

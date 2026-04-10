@@ -31,10 +31,12 @@ export default function EntityHeader({
   entityType,
   name,
   subtitle,
+  imageUrl,
 }: {
   entityType: EntityType;
   name: string;
   subtitle?: string;
+  imageUrl?: string;
 }) {
   const Icon = ENTITY_ICONS[entityType];
   const colorClass = ENTITY_COLORS[entityType];
@@ -47,16 +49,29 @@ export default function EntityHeader({
 
   return (
     <div className="flex items-center gap-3">
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt=""
+          className="h-10 w-10 shrink-0 rounded-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+            (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+          }}
+        />
+      ) : null}
       <div
         className={cn(
-          "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold",
-          colorClass
+          "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold shrink-0",
+          colorClass,
+          imageUrl && "hidden"
         )}
       >
         {initials || <Icon className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="text-lg font-semibold text-zinc-900 truncate">{name}</h3>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">{name}</h3>
         {subtitle && (
           <p className="text-sm text-zinc-500 truncate">{subtitle}</p>
         )}
