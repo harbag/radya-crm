@@ -14,42 +14,129 @@ import SalesFunnel from "./sales-funnel";
 import TopClients from "./top-clients";
 import RecentActivities from "./recent-activities";
 import DealsClosingSoon from "./deals-closing-soon";
-import { useDealsStore } from "@/store/use-deals-store";
-import { useCompaniesStore } from "@/store/use-companies-store";
-import { useContactsStore } from "@/store/use-contacts-store";
-import { useLeadsStore } from "@/store/use-leads-store";
-import { useTasksStore } from "@/store/use-tasks-store";
-import { useActivitiesStore } from "@/store/use-activities-store";
+import { useDealList, type DealRow } from "@/lib/queries/deals";
+import { useCompanyList, type CompanyRow } from "@/lib/queries/companies";
+import { useContactList } from "@/lib/queries/contacts";
+import { useLeadList } from "@/lib/queries/leads";
+import { useTaskList } from "@/lib/queries/tasks";
 import { formatCurrency } from "@/lib/mock-data";
-import { getAllActivitiesSorted } from "@/lib/entity-helpers";
-import {
-  calculateWinRate,
-  calculateAvgDealSize,
-  getTotalPipeline,
-  getClosedWonTotal,
-  getPipelineByStage,
-  getTopClients,
-  getDealsClosingSoon,
-} from "@/lib/dashboard-helpers";
+import type { Deal, Company } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { GridSkeleton } from "@/components/shared/query-states";
+
+function mapDealRow(row: DealRow): Deal {
+  return {
+    id: row.id,
+    title: row.title,
+    value: row.value,
+    contactId: row.contact_id ?? "",
+    companyId: row.company_id,
+    stage: "prospecting",
+    probability: row.probability,
+    expectedCloseDate: row.expected_close_date ?? "",
+    notes: "",
+    stageId: row.stage_id ?? undefined,
+    dealStatus: row.status,
+    pipelineId: row.pipeline_id ?? undefined,
+    stageChangedAt: row.stage_changed_at ?? undefined,
+    lostReason: row.lost_reason ?? undefined,
+    actualCloseDate: row.actual_close_date ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function mapCompanyRow(row: CompanyRow): Company {
+  return {
+    id: row.id,
+    name: row.name,
+    industry: row.industry ?? "",
+    website: row.website ?? "",
+    phone: row.phone ?? "",
+    address: [row.address_city, row.address_province].filter(Boolean).join(", "),
+    notes: "",
+    logoUrl: row.logo_url ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function getTopClients(
+  dealRows: DealRow[],
+  companyRows: CompanyRow[],
+  limit = 5
+): { company: Company; dealCount: number; totalValue: number }[] {
+  const companyMap = new Map<string, { company: Company; dealCount: number; totalValue: number }>();
+  const companies = companyRows.map(mapCompanyRow);
+
+  for (const row of dealRows) {
+    if (!row.company_id || row.is_archived) continue;
+    const company = companies.find((c) => c.id === row.company_id);
+    if (!company) continue;
+    const existing = companyMap.get(row.company_id);
+    if (existing) {
+      existing.dealCount++;
+      existing.totalValue += row.value;
+    } else {
+      companyMap.set(row.company_id, { company, dealCount: 1, totalValue: row.value });
+    }
+  }
+
+  return Array.from(companyMap.values())
+    .sort((a, b) => b.totalValue - a.totalValue)
+    .slice(0, limit);
+}
 
 export default function Dashboard() {
-  const { deals } = useDealsStore();
-  const { companies } = useCompaniesStore();
-  const { contacts } = useContactsStore();
-  const { leads } = useLeadsStore();
-  const { tasks } = useTasksStore();
-  const { activities } = useActivitiesStore();
+  const { data: dealRows, isLoading: dealsLoading } = useDealList();
+  const { data: companyRows } = useCompanyList();
+  const { data: contactRows } = useContactList();
+  const { data: leadRows } = useLeadList();
+  const { data: taskRows } = useTaskList();
 
-  const totalPipeline = getTotalPipeline(deals);
-  const closedWon = getClosedWonTotal(deals);
-  const winRate = calculateWinRate(deals);
-  const avgDealSize = calculateAvgDealSize(deals);
-  const pipelineByStage = getPipelineByStage(deals);
-  const topClients = getTopClients(deals, companies);
-  const closingSoon = getDealsClosingSoon(deals);
-  const recentActivities = getAllActivitiesSorted(activities).slice(0, 10);
-  const openTasks = tasks.filter((t) => t.status !== "done").length;
+  if (dealsLoading) return <GridSkeleton />;
+
+  const allDeals = dealRows ?? [];
+  const openDeals = allDeals.filter((d) => d.status === "open" && !d.is_archived);
+  const wonDeals = allDeals.filter((d) => d.status === "won");
+  const lostDeals = allDeals.filter((d) => d.status === "lost");
+
+  const totalPipeline = openDeals.reduce((s, d) => s + d.value, 0);
+  const closedWonTotal = wonDeals.reduce((s, d) => s + d.value, 0);
+  const totalClosed = wonDeals.length + lostDeals.length;
+  const winRate = totalClosed === 0 ? 0 : Math.round((wonDeals.length / totalClosed) * 100);
+  const avgDealSize = allDeals.length === 0 ? 0 : Math.round(allDeals.reduce((s, d) => s + d.value, 0) / allDeals.length);
+  const openTasks = (taskRows ?? []).filter((t) => t.status === "open").length;
+
+  // Sales funnel by status
+  const pipelineByStage = [
+    { stage: "Open", count: openDeals.length, value: totalPipeline },
+    { stage: "Won", count: wonDeals.length, value: closedWonTotal },
+    { stage: "Lost", count: lostDeals.length, value: lostDeals.reduce((s, d) => s + d.value, 0) },
+  ];
+
+  // Closing soon: open deals with expected_close_date within 30 days
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const closingSoon = openDeals
+    .filter(
+      (d) =>
+        d.expected_close_date &&
+        new Date(d.expected_close_date) >= now &&
+        new Date(d.expected_close_date) <= cutoff
+    )
+    .sort((a, b) => new Date(a.expected_close_date!).getTime() - new Date(b.expected_close_date!).getTime())
+    .slice(0, 8)
+    .map(mapDealRow);
+
+  const topClients = getTopClients(allDeals, companyRows ?? []);
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -71,11 +158,11 @@ export default function Dashboard() {
               value={formatCurrency(totalPipeline)}
               icon={BarChart3}
               iconColor="text-blue-500"
-              subtitle={`${deals.filter((d) => !["closed_won", "closed_lost"].includes(d.stage)).length} active`}
+              subtitle={`${openDeals.length} active`}
             />
             <StatCard
               label="Closed Won"
-              value={formatCurrency(closedWon)}
+              value={formatCurrency(closedWonTotal)}
               icon={DollarSign}
               iconColor="text-emerald-500"
             />
@@ -93,10 +180,10 @@ export default function Dashboard() {
             />
             <StatCard
               label="Contacts"
-              value={contacts.length.toString()}
+              value={(contactRows ?? []).length.toString()}
               icon={Users}
               iconColor="text-indigo-500"
-              subtitle={`${leads.length} leads`}
+              subtitle={`${(leadRows ?? []).length} leads`}
             />
             <StatCard
               label="Open Tasks"
@@ -115,7 +202,7 @@ export default function Dashboard() {
           {/* Bottom row */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <DealsClosingSoon deals={closingSoon} />
-            <RecentActivities activities={recentActivities} />
+            <RecentActivities activities={[]} />
           </div>
         </div>
       </ScrollArea>

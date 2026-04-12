@@ -1,28 +1,92 @@
 "use client";
 
 import React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Target, ArrowRightLeft } from "lucide-react";
-import DataGrid, { type RowAction } from "@/components/shared/data-grid";
+import type { ColumnDef, CellContext } from "@tanstack/react-table";
+import { Target } from "lucide-react";
+import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
   LongTextCell,
   createStatusBadgeCell,
-  DateCell,
   DateTimeCell,
   CurrencyCell,
   createRelationCell,
 } from "@/components/shared/grid-cells";
-import { useLeadsStore } from "@/store/use-leads-store";
-import { useContactsStore } from "@/store/use-contacts-store";
-import { useCompaniesStore } from "@/store/use-companies-store";
-import { useDealsStore } from "@/store/use-deals-store";
-import { useActivitiesStore } from "@/store/use-activities-store";
+import {
+  useLeadList,
+  useCreateLead,
+  useUpdateLead,
+  useArchiveLead,
+  type LeadRow,
+} from "@/lib/queries/leads";
+import { useContactList } from "@/lib/queries/contacts";
+import { useCompanyList } from "@/lib/queries/companies";
 import {
   LEAD_STATUS_CONFIG,
   LEAD_SOURCE_CONFIG,
   type Lead,
 } from "@/lib/mock-data";
+import type { LeadStatus, LeadSource } from "@/lib/types";
+import { GridSkeleton, QueryError } from "@/components/shared/query-states";
+import { cn } from "@/lib/utils";
+
+function mapLeadRow(row: LeadRow): Lead {
+  let status: LeadStatus = "new";
+  if (row.status === "contacted") status = "contacted";
+  else if (row.status === "qualified") status = "qualified";
+  else if (row.status === "disqualified" || row.status === "converted")
+    status = "unqualified";
+
+  return {
+    id: row.id,
+    title: row.title,
+    source: (row.lead_source as LeadSource) ?? "other",
+    status,
+    contactId: row.contact_id,
+    companyId: row.company_id,
+    estimatedValue: row.estimated_value ?? 0,
+    notes: "",
+    priority: row.priority ?? undefined,
+    lastContactedAt: row.last_contacted_at ?? undefined,
+    nextFollowUpAt: row.next_follow_up_at ?? undefined,
+    isArchived: row.is_archived,
+    convertedAt: row.converted_at ?? undefined,
+    convertedDealId: row.converted_deal_id ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function leadUpdateFields(updates: Partial<Lead>): Partial<LeadRow> {
+  const fields: Partial<LeadRow> = {};
+  if (updates.title !== undefined) fields.title = updates.title as string;
+  if (updates.source !== undefined) fields.lead_source = updates.source as string;
+  if (updates.status !== undefined) {
+    const s = updates.status;
+    fields.status =
+      s === "unqualified"
+        ? "disqualified"
+        : (s as LeadRow["status"]);
+  }
+  if (updates.contactId !== undefined)
+    fields.contact_id = updates.contactId as string | null;
+  if (updates.companyId !== undefined)
+    fields.company_id = updates.companyId as string | null;
+  if (updates.estimatedValue !== undefined)
+    fields.estimated_value = updates.estimatedValue as number;
+  if (updates.nextFollowUpAt !== undefined)
+    fields.next_follow_up_at = updates.nextFollowUpAt as string | null;
+  return fields;
+}
+
+function isOverdue(row: Lead): boolean {
+  if (!row.nextFollowUpAt) return false;
+  if (row.status !== "new" && row.status !== "contacted") return false;
+  return new Date(row.nextFollowUpAt) < new Date();
+}
 
 const COLUMN_WIDTHS: Record<string, number> = {
   select: 40,
@@ -30,10 +94,10 @@ const COLUMN_WIDTHS: Record<string, number> = {
   title: 200,
   source: 120,
   status: 120,
+  followUp: 130,
   contactId: 150,
   companyId: 150,
   estimatedValue: 140,
-  notes: 200,
   createdAt: 130,
   createdBy: 130,
   lastModifiedAt: 150,
@@ -41,10 +105,31 @@ const COLUMN_WIDTHS: Record<string, number> = {
   actions: 44,
 };
 
-const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
+const AUDIT_HIDDEN_COLUMNS = [
+  "createdAt",
+  "createdBy",
+  "lastModifiedAt",
+  "lastModifiedBy",
+];
 
 const StatusCell = createStatusBadgeCell<Lead>(LEAD_STATUS_CONFIG, "status");
 const SourceCell = createStatusBadgeCell<Lead>(LEAD_SOURCE_CONFIG, "source");
+
+function FollowUpCell({ row }: CellContext<Lead, unknown>) {
+  const lead = row.original;
+  if (!lead.nextFollowUpAt) return <div className="flex h-full w-full items-center px-2 text-sm text-zinc-400">&mdash;</div>;
+  const overdue = isOverdue(lead);
+  return (
+    <div className={cn("flex h-full w-full items-center px-2 text-sm", overdue ? "text-red-600 font-medium" : "text-zinc-600")}>
+      {overdue && (
+        <span className="mr-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">
+          Overdue
+        </span>
+      )}
+      {new Date(lead.nextFollowUpAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+    </div>
+  );
+}
 
 export default function LeadsGrid({
   onRowClick,
@@ -55,42 +140,36 @@ export default function LeadsGrid({
   titleExtra?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
-  const { leads, addLead, updateLead, deleteLeads, markConverted } = useLeadsStore();
-  const { contacts } = useContactsStore();
-  const { companies } = useCompaniesStore();
-  const { addDeal } = useDealsStore();
-  const { addActivity } = useActivitiesStore();
+  const {
+    data: rows,
+    isLoading,
+    error,
+    refetch,
+  } = useLeadList();
+  const { data: contactRows } = useContactList();
+  const { data: companyRows } = useCompanyList();
+  const createLead = useCreateLead();
+  const updateLead = useUpdateLead();
+  const archiveLead = useArchiveLead();
+
+  const leads: Lead[] = (rows ?? []).map(mapLeadRow);
+  const contactOptions = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || c.id,
+  }));
+  const companyOptions = (companyRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
 
   const ContactCell = createRelationCell<Lead>(
-    () => contacts.map((c) => ({ id: c.id, name: c.name })),
+    () => contactOptions,
     "contactId"
   );
   const CompanyCell = createRelationCell<Lead>(
-    () => companies.map((c) => ({ id: c.id, name: c.name })),
+    () => companyOptions,
     "companyId"
   );
-
-  function handleConvertToDeal(lead: Lead) {
-    const dealId = addDeal({
-      title: lead.title,
-      value: lead.estimatedValue,
-      contactId: lead.contactId ?? "",
-      companyId: lead.companyId,
-      stage: "prospecting",
-      probability: 20,
-      expectedCloseDate: new Date(Date.now() + 90 * 86400000)
-        .toISOString()
-        .split("T")[0],
-      notes: lead.notes,
-    });
-    addActivity({
-      type: "deal_created",
-      description: `Lead "${lead.title}" converted to deal`,
-      linkedEntityType: "deal",
-      linkedEntityId: dealId,
-    });
-    markConverted(lead.id);
-  }
 
   const sourceOptions = Object.entries(LEAD_SOURCE_CONFIG).map(([key, val]) => ({
     value: key,
@@ -101,7 +180,7 @@ export default function LeadsGrid({
     label: val.label,
   }));
 
-  const columns: ColumnDef<Lead, any>[] = [
+  const columns: ColumnDef<Lead, unknown>[] = [
     {
       accessorKey: "title",
       header: "Title",
@@ -116,7 +195,11 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.source,
       cell: SourceCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: sourceOptions },
+      meta: {
+        cellType: "dropdown" as const,
+        dataType: "select" as const,
+        selectOptions: sourceOptions,
+      },
     },
     {
       accessorKey: "status",
@@ -124,7 +207,20 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.status,
       cell: StatusCell,
       filterFn: "equals",
-      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: statusOptions },
+      meta: {
+        cellType: "dropdown" as const,
+        dataType: "select" as const,
+        selectOptions: statusOptions,
+      },
+    },
+    {
+      id: "followUp",
+      accessorKey: "nextFollowUpAt",
+      header: "Follow-up",
+      size: COLUMN_WIDTHS.followUp,
+      cell: FollowUpCell,
+      enableColumnFilter: false,
+      meta: { cellType: "readonly" as const },
     },
     {
       accessorKey: "contactId",
@@ -149,14 +245,6 @@ export default function LeadsGrid({
       meta: { cellType: "readonly" as const, dataType: "number" as const },
     },
     {
-      accessorKey: "notes",
-      header: "Notes",
-      size: COLUMN_WIDTHS.notes,
-      cell: LongTextCell,
-      enableColumnFilter: false,
-      meta: { cellType: "longtext" as const, dataType: "text" as const },
-    },
-    {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
@@ -170,9 +258,10 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.createdBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
     {
       accessorKey: "lastModifiedAt",
@@ -188,19 +277,16 @@ export default function LeadsGrid({
       size: COLUMN_WIDTHS.lastModifiedBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
   ];
 
-  const rowActions: RowAction<Lead>[] = [
-    {
-      label: "Convert to Deal",
-      icon: ArrowRightLeft,
-      onClick: handleConvertToDeal,
-    },
-  ];
+  if (isLoading) return <GridSkeleton />;
+  if (error)
+    return <QueryError message={error.message} onRetry={() => refetch()} />;
 
   return (
     <DataGrid<Lead>
@@ -210,23 +296,33 @@ export default function LeadsGrid({
       entityName="Leads"
       entityIcon={Target}
       onAdd={() =>
-        addLead({
+        createLead.mutate({
           title: "",
-          source: "other",
           status: "new",
-          contactId: null,
-          companyId: null,
-          estimatedValue: 0,
-          notes: "",
+          contact_id: null,
+          company_id: null,
+          contact_name: null,
+          contact_phone: null,
+          contact_email: null,
+          lead_source: "other",
+          estimated_value: null,
+          owner_id: null,
+          priority: null,
+          last_contacted_at: null,
+          next_follow_up_at: null,
+          converted_at: null,
+          converted_deal_id: null,
+          created_by: null,
         })
       }
-      onUpdate={(id, updates) => updateLead(id, updates as Partial<Lead>)}
-      onDelete={deleteLeads}
+      onUpdate={(id, updates) =>
+        updateLead.mutate({ id, ...leadUpdateFields(updates) })
+      }
+      onDelete={(ids) => ids.forEach((id) => archiveLead.mutate(id))}
       onRowClick={onRowClick}
       titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}
       addLabel="Add Lead"
-      rowActions={rowActions}
       defaultHiddenColumns={AUDIT_HIDDEN_COLUMNS}
     />
   );

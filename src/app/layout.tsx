@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { DesktopSidebar, MobileSidebar, MobileTopBar } from "@/components/layout/sidebar";
-import EntityDetailPanel from "@/components/shared/entity-detail-panel";
-import AIChatPanel from "@/components/layout/ai-chat-panel";
 import ThemeProvider from "@/components/layout/theme-provider";
+import QueryProvider from "@/components/providers/query-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,16 +17,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>
-          <div className="flex h-screen overflow-hidden bg-background">
-            <DesktopSidebar />
-            <MobileSidebar />
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <MobileTopBar />
-              {children}
-            </div>
-          </div>
-          <EntityDetailPanel />
-          <AIChatPanel />
+          <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>
     </html>

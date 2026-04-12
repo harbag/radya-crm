@@ -6,16 +6,67 @@ import { Users } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
-  LongTextCell,
-  createStatusBadgeCell,
   createAvatarNameCell,
-  DateCell,
   DateTimeCell,
   createRelationCell,
 } from "@/components/shared/grid-cells";
-import { useContactsStore } from "@/store/use-contacts-store";
-import { useCompaniesStore } from "@/store/use-companies-store";
-import { STATUS_CONFIG, type Contact } from "@/lib/mock-data";
+import {
+  useContactList,
+  useCreateContact,
+  useUpdateContact,
+  useArchiveContact,
+  type ContactRow,
+} from "@/lib/queries/contacts";
+import { useCompanyList } from "@/lib/queries/companies";
+import type { Contact } from "@/lib/types";
+import { GridSkeleton, QueryError } from "@/components/shared/query-states";
+
+function mapContactRow(row: ContactRow): Contact {
+  return {
+    id: row.id,
+    name: [row.first_name, row.last_name].filter(Boolean).join(" ") || "",
+    email: row.email ?? "",
+    phone: row.phone_primary ?? "",
+    jobTitle: row.job_title ?? "",
+    companyId: row.company_id,
+    status: "lead",
+    notes: "",
+    linkedinUrl: row.linkedin_url ?? undefined,
+    profileImageUrl: row.avatar_url ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function contactUpdateFields(
+  updates: Partial<Contact>
+): Partial<ContactRow> {
+  const fields: Partial<ContactRow> = {};
+  if (updates.name !== undefined) {
+    const parts = String(updates.name)
+      .trim()
+      .split(/\s+/);
+    fields.first_name = parts[0] ?? "";
+    fields.last_name = parts.slice(1).join(" ");
+  }
+  if (updates.email !== undefined) fields.email = updates.email as string;
+  if (updates.phone !== undefined)
+    fields.phone_primary = updates.phone as string;
+  if (updates.jobTitle !== undefined)
+    fields.job_title = updates.jobTitle as string;
+  if (updates.companyId !== undefined)
+    fields.company_id = updates.companyId as string | null;
+  if (updates.linkedinUrl !== undefined)
+    fields.linkedin_url = updates.linkedinUrl as string | null;
+  if (updates.avatarUrl !== undefined)
+    fields.avatar_url = updates.avatarUrl as string | null;
+  return fields;
+}
 
 const ContactNameCell = createAvatarNameCell<Contact>(
   (c) => c.profileImageUrl,
@@ -31,8 +82,6 @@ const COLUMN_WIDTHS: Record<string, number> = {
   phone: 140,
   jobTitle: 130,
   companyId: 160,
-  status: 120,
-  notes: 220,
   createdAt: 130,
   createdBy: 130,
   lastModifiedAt: 150,
@@ -40,9 +89,12 @@ const COLUMN_WIDTHS: Record<string, number> = {
   actions: 44,
 };
 
-const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
-
-const StatusCell = createStatusBadgeCell<Contact>(STATUS_CONFIG, "status");
+const AUDIT_HIDDEN_COLUMNS = [
+  "createdAt",
+  "createdBy",
+  "lastModifiedAt",
+  "lastModifiedBy",
+];
 
 export default function ContactsGrid({
   onRowClick,
@@ -51,21 +103,29 @@ export default function ContactsGrid({
   onRowClick?: (row: Contact) => void;
   toolbarExtra?: React.ReactNode;
 }) {
-  const { contacts, addContact, updateContact, deleteContacts } =
-    useContactsStore();
-  const { companies } = useCompaniesStore();
+  const {
+    data: rows,
+    isLoading,
+    error,
+    refetch,
+  } = useContactList();
+  const { data: companyRows } = useCompanyList();
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const archiveContact = useArchiveContact();
+
+  const contacts: Contact[] = (rows ?? []).map(mapContactRow);
+  const companyOptions = (companyRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
 
   const CompanyCell = createRelationCell<Contact>(
-    () => companies.map((c) => ({ id: c.id, name: c.name })),
+    () => companyOptions,
     "companyId"
   );
 
-  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, val]) => ({
-    value: key,
-    label: val.label,
-  }));
-
-  const columns: ColumnDef<Contact, any>[] = [
+  const columns: ColumnDef<Contact, unknown>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -107,22 +167,6 @@ export default function ContactsGrid({
       meta: { cellType: "dropdown" as const },
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      size: COLUMN_WIDTHS.status,
-      cell: StatusCell,
-      filterFn: "equals",
-      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: statusOptions },
-    },
-    {
-      accessorKey: "notes",
-      header: "Notes",
-      size: COLUMN_WIDTHS.notes,
-      cell: LongTextCell,
-      enableColumnFilter: false,
-      meta: { cellType: "longtext" as const, dataType: "text" as const },
-    },
-    {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
@@ -136,9 +180,10 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.createdBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
     {
       accessorKey: "lastModifiedAt",
@@ -154,11 +199,16 @@ export default function ContactsGrid({
       size: COLUMN_WIDTHS.lastModifiedBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
   ];
+
+  if (isLoading) return <GridSkeleton />;
+  if (error)
+    return <QueryError message={error.message} onRetry={() => refetch()} />;
 
   return (
     <DataGrid<Contact>
@@ -168,18 +218,27 @@ export default function ContactsGrid({
       entityName="Contacts"
       entityIcon={Users}
       onAdd={() =>
-        addContact({
-          name: "",
-          email: "",
-          phone: "",
-          companyId: null,
-          jobTitle: "",
-          status: "lead",
-          notes: "",
+        createContact.mutate({
+          first_name: "",
+          last_name: "",
+          email: null,
+          phone_primary: null,
+          phone_secondary: null,
+          whatsapp: null,
+          job_title: null,
+          department: null,
+          company_id: null,
+          owner_id: null,
+          lead_source: null,
+          linkedin_url: null,
+          avatar_url: null,
+          created_by: null,
         })
       }
-      onUpdate={(id, updates) => updateContact(id, updates as Partial<Contact>)}
-      onDelete={deleteContacts}
+      onUpdate={(id, updates) =>
+        updateContact.mutate({ id, ...contactUpdateFields(updates) })
+      }
+      onDelete={(ids) => ids.forEach((id) => archiveContact.mutate(id))}
       onRowClick={onRowClick}
       toolbarExtra={toolbarExtra}
       defaultHiddenColumns={AUDIT_HIDDEN_COLUMNS}

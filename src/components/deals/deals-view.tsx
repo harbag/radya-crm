@@ -3,68 +3,48 @@
 import React, { useState } from "react";
 import ViewSwitcher, { type ViewType } from "@/components/shared/view-switcher";
 import DealsGrid from "./deals-grid";
-import DealCard from "./deal-card";
-import KanbanBoard from "@/components/shared/kanban-board";
+import DealsKanban from "./deals-kanban";
 import CalendarView from "@/components/shared/calendar-view";
-import { useDealsStore } from "@/store/use-deals-store";
-import {
-  DEAL_STAGES,
-  DEAL_STAGE_CONFIG,
-  formatCurrency,
-  type Deal,
-  type DealStage,
-} from "@/lib/mock-data";
+import { useDealList, type DealRow } from "@/lib/queries/deals";
+import type { Deal } from "@/lib/types";
+import { DEAL_STAGE_CONFIG } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { FilterColumnDef } from "@/components/shared/filter-builder";
+import { GridSkeleton, QueryError } from "@/components/shared/query-states";
+
+function mapDealRow(row: DealRow): Deal {
+  return {
+    id: row.id,
+    title: row.title,
+    value: row.value,
+    contactId: row.contact_id ?? "",
+    companyId: row.company_id,
+    stage: "prospecting",
+    probability: row.probability,
+    expectedCloseDate: row.expected_close_date ?? "",
+    notes: "",
+    stageId: row.stage_id ?? undefined,
+    dealStatus: row.status,
+    pipelineId: row.pipeline_id ?? undefined,
+    stageChangedAt: row.stage_changed_at ?? undefined,
+    lostReason: row.lost_reason ?? undefined,
+    actualCloseDate: row.actual_close_date ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
 
 const FILTER_COLUMNS: FilterColumnDef[] = [
   { id: "title", label: "Title", dataType: "text" },
   { id: "value", label: "Value", dataType: "number" },
-  {
-    id: "stage",
-    label: "Stage",
-    dataType: "select",
-    selectOptions: Object.entries(DEAL_STAGE_CONFIG).map(([key, val]) => ({
-      value: key,
-      label: val.label,
-    })),
-  },
   { id: "probability", label: "Prob. %", dataType: "number" },
   { id: "expectedCloseDate", label: "Close Date", dataType: "date" },
-  { id: "notes", label: "Notes", dataType: "text" },
   { id: "createdAt", label: "Created", dataType: "date" },
 ];
-
-const STAGE_COLORS: Record<
-  string,
-  { dot: string; header: string; droppable: string }
-> = {
-  prospecting: {
-    dot: "bg-blue-400",
-    header: "text-blue-700",
-    droppable: "bg-blue-50/60",
-  },
-  proposal: {
-    dot: "bg-amber-400",
-    header: "text-amber-700",
-    droppable: "bg-amber-50/60",
-  },
-  negotiation: {
-    dot: "bg-orange-400",
-    header: "text-orange-700",
-    droppable: "bg-orange-50/60",
-  },
-  closed_won: {
-    dot: "bg-emerald-400",
-    header: "text-emerald-700",
-    droppable: "bg-emerald-50/60",
-  },
-  closed_lost: {
-    dot: "bg-red-400",
-    header: "text-red-700",
-    droppable: "bg-red-50/60",
-  },
-};
 
 export default function DealsView({
   onRowClick,
@@ -72,7 +52,7 @@ export default function DealsView({
   onRowClick?: (row: Deal) => void;
 }) {
   const [view, setView] = useState<ViewType>("kanban");
-  const { deals, moveDeal } = useDealsStore();
+  const { data: rows, isLoading, error, refetch } = useDealList();
 
   const viewSwitcher = (
     <ViewSwitcher
@@ -90,29 +70,18 @@ export default function DealsView({
           {viewSwitcher}
         </div>
         <div className="flex-1 overflow-hidden">
-          <KanbanBoard<Deal>
-            data={deals}
-            stages={DEAL_STAGES}
-            getStage={(deal) => deal.stage}
-            onMove={(dealId, newStage, newIndex) =>
-              moveDeal(dealId, newStage as DealStage, newIndex)
-            }
-            renderCard={(deal, isDragging) => (
-              <DealCard deal={deal} isDragging={isDragging} />
-            )}
-            stageColors={STAGE_COLORS}
-            getStageSummary={(items) =>
-              formatCurrency(items.reduce((s, d) => s + d.value, 0))
-            }
-            onItemClick={onRowClick}
-            filterColumns={FILTER_COLUMNS}
-          />
+          <DealsKanban />
         </div>
       </div>
     );
   }
 
   if (view === "calendar") {
+    if (isLoading) return <GridSkeleton />;
+    if (error)
+      return <QueryError message={error.message} onRetry={() => refetch()} />;
+
+    const deals = (rows ?? []).map(mapDealRow);
     return (
       <div className="flex h-full flex-col bg-background">
         <div className="flex items-center border-b border-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5">
@@ -130,7 +99,8 @@ export default function DealsView({
               <div
                 className={cn(
                   "truncate rounded px-1.5 py-0.5 text-[11px] font-medium",
-                  DEAL_STAGE_CONFIG[deal.stage].className
+                  DEAL_STAGE_CONFIG[deal.stage]?.className ??
+                    "bg-blue-100 text-blue-700"
                 )}
               >
                 {deal.title}
@@ -142,7 +112,5 @@ export default function DealsView({
     );
   }
 
-  return (
-    <DealsGrid onRowClick={onRowClick} titleExtra={viewSwitcher} />
-  );
+  return <DealsGrid onRowClick={onRowClick} titleExtra={viewSwitcher} />;
 }

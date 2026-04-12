@@ -6,18 +6,69 @@ import { KanbanSquare } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
-  LongTextCell,
-  createStatusBadgeCell,
   DateCell,
   DateTimeCell,
   CurrencyCell,
   createRelationCell,
 } from "@/components/shared/grid-cells";
 import { createAttachmentCell } from "@/components/shared/grid-cells-attachment";
-import { useDealsStore } from "@/store/use-deals-store";
-import { useContactsStore } from "@/store/use-contacts-store";
-import { useCompaniesStore } from "@/store/use-companies-store";
-import { DEAL_STAGE_CONFIG, type Deal } from "@/lib/mock-data";
+import {
+  useDealList,
+  useCreateDeal,
+  useUpdateDeal,
+  useArchiveDeal,
+  type DealRow,
+} from "@/lib/queries/deals";
+import { useContactList } from "@/lib/queries/contacts";
+import { useCompanyList } from "@/lib/queries/companies";
+import { usePipelines, useStages } from "@/lib/queries/pipelines";
+import type { Deal } from "@/lib/types";
+import { GridSkeleton, QueryError } from "@/components/shared/query-states";
+
+function mapDealRow(row: DealRow): Deal {
+  return {
+    id: row.id,
+    title: row.title,
+    value: row.value,
+    contactId: row.contact_id ?? "",
+    companyId: row.company_id,
+    stage: "prospecting",
+    probability: row.probability,
+    expectedCloseDate: row.expected_close_date ?? "",
+    notes: "",
+    stageId: row.stage_id ?? undefined,
+    dealStatus: row.status,
+    pipelineId: row.pipeline_id ?? undefined,
+    stageChangedAt: row.stage_changed_at ?? undefined,
+    lostReason: row.lost_reason ?? undefined,
+    actualCloseDate: row.actual_close_date ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function dealUpdateFields(updates: Partial<Deal>): Partial<DealRow> {
+  const fields: Partial<DealRow> = {};
+  if (updates.title !== undefined) fields.title = updates.title as string;
+  if (updates.value !== undefined) fields.value = updates.value as number;
+  if (updates.contactId !== undefined)
+    fields.contact_id = updates.contactId as string | null;
+  if (updates.companyId !== undefined)
+    fields.company_id = updates.companyId as string | null;
+  if (updates.probability !== undefined)
+    fields.probability = updates.probability as number;
+  if (updates.expectedCloseDate !== undefined)
+    fields.expected_close_date = updates.expectedCloseDate as string | null;
+  if (updates.stageId !== undefined)
+    fields.stage_id = updates.stageId as string | null;
+  return fields;
+}
+
+const AttachmentCell = createAttachmentCell<Deal>("deal");
 
 const COLUMN_WIDTHS: Record<string, number> = {
   select: 40,
@@ -26,11 +77,9 @@ const COLUMN_WIDTHS: Record<string, number> = {
   value: 140,
   contactId: 150,
   companyId: 150,
-  stage: 120,
   probability: 90,
   expectedCloseDate: 120,
   attachments: 100,
-  notes: 200,
   createdAt: 130,
   createdBy: 130,
   lastModifiedAt: 150,
@@ -38,11 +87,12 @@ const COLUMN_WIDTHS: Record<string, number> = {
   actions: 44,
 };
 
-const AttachmentCell = createAttachmentCell<Deal>("deal");
-
-const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
-
-const StageCell = createStatusBadgeCell<Deal>(DEAL_STAGE_CONFIG, "stage");
+const AUDIT_HIDDEN_COLUMNS = [
+  "createdAt",
+  "createdBy",
+  "lastModifiedAt",
+  "lastModifiedBy",
+];
 
 export default function DealsGrid({
   onRowClick,
@@ -53,25 +103,43 @@ export default function DealsGrid({
   titleExtra?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
 }) {
-  const { deals, addDeal, updateDeal, deleteDeals } = useDealsStore();
-  const { contacts } = useContactsStore();
-  const { companies } = useCompaniesStore();
+  const {
+    data: rows,
+    isLoading,
+    error,
+    refetch,
+  } = useDealList();
+  const { data: contactRows } = useContactList();
+  const { data: companyRows } = useCompanyList();
+  const { data: pipelines } = usePipelines();
+  const defaultPipeline =
+    pipelines?.find((p) => p.is_default) ?? pipelines?.[0];
+  const { data: stages } = useStages(defaultPipeline?.id ?? "");
+
+  const createDeal = useCreateDeal();
+  const updateDeal = useUpdateDeal();
+  const archiveDeal = useArchiveDeal();
+
+  const deals: Deal[] = (rows ?? []).map(mapDealRow);
+  const contactOptions = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || c.id,
+  }));
+  const companyOptions = (companyRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
 
   const ContactCell = createRelationCell<Deal>(
-    () => contacts.map((c) => ({ id: c.id, name: c.name })),
+    () => contactOptions,
     "contactId"
   );
   const CompanyCell = createRelationCell<Deal>(
-    () => companies.map((c) => ({ id: c.id, name: c.name })),
+    () => companyOptions,
     "companyId"
   );
 
-  const stageOptions = Object.entries(DEAL_STAGE_CONFIG).map(([key, val]) => ({
-    value: key,
-    label: val.label,
-  }));
-
-  const columns: ColumnDef<Deal, any>[] = [
+  const columns: ColumnDef<Deal, unknown>[] = [
     {
       accessorKey: "title",
       header: "Title",
@@ -103,14 +171,6 @@ export default function DealsGrid({
       meta: { cellType: "dropdown" as const },
     },
     {
-      accessorKey: "stage",
-      header: "Stage",
-      size: COLUMN_WIDTHS.stage,
-      cell: StageCell,
-      filterFn: "equals",
-      meta: { cellType: "dropdown" as const, dataType: "select" as const, selectOptions: stageOptions },
-    },
-    {
       accessorKey: "probability",
       header: "Prob. %",
       size: COLUMN_WIDTHS.probability,
@@ -136,14 +196,6 @@ export default function DealsGrid({
       meta: { cellType: "readonly" as const },
     },
     {
-      accessorKey: "notes",
-      header: "Notes",
-      size: COLUMN_WIDTHS.notes,
-      cell: LongTextCell,
-      enableColumnFilter: false,
-      meta: { cellType: "longtext" as const, dataType: "text" as const },
-    },
-    {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
@@ -157,9 +209,10 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.createdBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
     {
       accessorKey: "lastModifiedAt",
@@ -175,11 +228,16 @@ export default function DealsGrid({
       size: COLUMN_WIDTHS.lastModifiedBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
   ];
+
+  if (isLoading) return <GridSkeleton />;
+  if (error)
+    return <QueryError message={error.message} onRetry={() => refetch()} />;
 
   return (
     <DataGrid<Deal>
@@ -189,19 +247,29 @@ export default function DealsGrid({
       entityName="Deals"
       entityIcon={KanbanSquare}
       onAdd={() =>
-        addDeal({
+        createDeal.mutate({
           title: "",
+          pipeline_id: defaultPipeline?.id ?? null,
+          stage_id: stages?.[0]?.id ?? null,
+          status: "open",
           value: 0,
-          contactId: "",
-          companyId: null,
-          stage: "prospecting",
-          probability: 20,
-          expectedCloseDate: new Date().toISOString().split("T")[0],
-          notes: "",
+          currency: "IDR",
+          probability: 50,
+          contact_id: null,
+          company_id: null,
+          owner_id: null,
+          expected_close_date: null,
+          actual_close_date: null,
+          lost_reason: null,
+          lead_source: null,
+          stage_changed_at: new Date().toISOString(),
+          created_by: null,
         })
       }
-      onUpdate={(id, updates) => updateDeal(id, updates as Partial<Deal>)}
-      onDelete={deleteDeals}
+      onUpdate={(id, updates) =>
+        updateDeal.mutate({ id, ...dealUpdateFields(updates) })
+      }
+      onDelete={(ids) => ids.forEach((id) => archiveDeal.mutate(id))}
       onRowClick={onRowClick}
       titleExtra={titleExtra}
       toolbarExtra={toolbarExtra}

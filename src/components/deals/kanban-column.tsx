@@ -1,49 +1,72 @@
 "use client";
 
 import { Droppable, Draggable } from "@hello-pangea/dnd";
-import type { Deal, DealStage } from "@/lib/mock-data";
+import type { Deal } from "@/lib/types";
 import { formatCurrency } from "@/lib/mock-data";
 import DealCard from "./deal-card";
 import { cn } from "@/lib/utils";
 
-const STAGE_COLORS: Record<
-  DealStage,
-  { dot: string; header: string; droppable: string }
-> = {
-  prospecting: {
-    dot: "bg-blue-400",
-    header: "text-blue-700",
-    droppable: "bg-blue-50/60",
-  },
-  proposal: {
-    dot: "bg-amber-400",
-    header: "text-amber-700",
-    droppable: "bg-amber-50/60",
-  },
-  negotiation: {
-    dot: "bg-orange-400",
-    header: "text-orange-700",
-    droppable: "bg-orange-50/60",
-  },
-  closed_won: {
-    dot: "bg-emerald-400",
-    header: "text-emerald-700",
-    droppable: "bg-emerald-50/60",
-  },
-  closed_lost: {
-    dot: "bg-red-400",
-    header: "text-red-700",
-    droppable: "bg-red-50/60",
-  },
-};
+// Generic color based on stage flags
+function getStageColors(
+  isWon: boolean,
+  isLost: boolean,
+  color?: string | null
+): { dot: string; header: string; droppable: string } {
+  if (isWon)
+    return {
+      dot: "bg-emerald-400",
+      header: "text-emerald-700",
+      droppable: "bg-emerald-50/60",
+    };
+  if (isLost)
+    return {
+      dot: "bg-red-400",
+      header: "text-red-700",
+      droppable: "bg-red-50/60",
+    };
+  // Use a sequence of colors for intermediate stages
+  const presets = [
+    { dot: "bg-blue-400", header: "text-blue-700", droppable: "bg-blue-50/60" },
+    { dot: "bg-amber-400", header: "text-amber-700", droppable: "bg-amber-50/60" },
+    { dot: "bg-orange-400", header: "text-orange-700", droppable: "bg-orange-50/60" },
+    { dot: "bg-purple-400", header: "text-purple-700", droppable: "bg-purple-50/60" },
+    { dot: "bg-indigo-400", header: "text-indigo-700", droppable: "bg-indigo-50/60" },
+  ];
+  // Use color hint if available
+  if (color) {
+    // Map common color names to Tailwind classes
+    const colorMap: Record<string, typeof presets[0]> = {
+      blue: presets[0],
+      amber: presets[1],
+      orange: presets[2],
+      purple: presets[3],
+      indigo: presets[4],
+    };
+    for (const [key, val] of Object.entries(colorMap)) {
+      if (color.toLowerCase().includes(key)) return val;
+    }
+  }
+  return presets[0];
+}
 
 type Props = {
-  stage: { id: DealStage; label: string };
+  stage: {
+    id: string;
+    name: string;
+    color?: string | null;
+    is_won_stage?: boolean;
+    is_lost_stage?: boolean;
+    order_index?: number;
+  };
   deals: Deal[];
 };
 
 export default function KanbanColumn({ stage, deals }: Props) {
-  const colors = STAGE_COLORS[stage.id];
+  const colors = getStageColors(
+    stage.is_won_stage ?? false,
+    stage.is_lost_stage ?? false,
+    stage.color
+  );
   const total = deals.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -53,7 +76,7 @@ export default function KanbanColumn({ stage, deals }: Props) {
         <div className="flex items-center gap-2">
           <span className={cn("h-2 w-2 rounded-full shrink-0", colors.dot)} />
           <span className={cn("text-sm font-semibold", colors.header)}>
-            {stage.label}
+            {stage.name}
           </span>
         </div>
         <div className="flex items-center gap-1.5">

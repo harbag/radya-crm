@@ -30,7 +30,38 @@ A fully client-side Customer Relationship Management (CRM) application built for
 
 ## Getting Started
 
-**Prerequisites:** Node.js 18+
+**Prerequisites:** Node.js 18+, a Supabase project
+
+### 1. Configure environment variables
+
+Fill in `.env.local` at the project root with your Supabase credentials:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+```
+
+### 2. Run the database migration
+
+In **Supabase Dashboard → SQL Editor**, paste and run the contents of:
+
+```
+supabase/migrations/001_initial_schema.sql
+```
+
+This creates all tables, triggers, RLS policies, and seeds a default "Sales Pipeline".
+
+### 3. Create your first admin user
+
+1. In Supabase Dashboard → **Authentication → Users**, click "Add user" and create the first user.
+2. Then run this SQL in the SQL Editor (replace the values):
+
+```sql
+INSERT INTO users (id, full_name, email, role)
+VALUES ('<auth-user-uuid>', 'Your Name', 'you@example.com', 'admin');
+```
+
+### 4. Start the app
 
 ```bash
 # Install dependencies
@@ -40,7 +71,9 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) — you will be redirected to `/login`.
+
+Sign in with the admin credentials you created above.
 
 ## Available Scripts
 
@@ -131,6 +164,8 @@ All types are defined in `src/lib/types.ts`.
 
 ## Notes
 
-- This is a demo/prototype application with no backend or database
-- All data is ephemeral — changes are lost on refresh
-- No authentication is implemented
+- Auth is email + password via Supabase Auth. Admin creates users manually — there is no self-registration.
+- The React Query DevTools panel is visible in development mode.
+- The middleware redirects all routes to `/login` when no session exists.
+- All app routes (`/`, `/contacts`, `/companies`, etc.) live under the `(app)` route group which provides the sidebar layout. The `/login` page has its own minimal layout.
+- A Next.js 16.2.x warning about `middleware` → `proxy` rename may appear during build. It is a forward-compatibility notice only — the middleware still works correctly.

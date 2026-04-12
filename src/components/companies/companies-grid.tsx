@@ -4,9 +4,21 @@ import React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Building2 } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
-import { EditableTextCell, LongTextCell, DateCell, DateTimeCell, createAvatarNameCell } from "@/components/shared/grid-cells";
-import { useCompaniesStore } from "@/store/use-companies-store";
-import type { Company } from "@/lib/mock-data";
+import {
+  EditableTextCell,
+  LongTextCell,
+  DateTimeCell,
+  createAvatarNameCell,
+} from "@/components/shared/grid-cells";
+import {
+  useCompanyList,
+  useCreateCompany,
+  useUpdateCompany,
+  useArchiveCompany,
+  type CompanyRow,
+} from "@/lib/queries/companies";
+import type { Company } from "@/lib/types";
+import { GridSkeleton, QueryError } from "@/components/shared/query-states";
 
 function getCompanyLogoUrl(company: Company): string | undefined {
   if (company.logoUrl) return company.logoUrl;
@@ -17,6 +29,51 @@ function getCompanyLogoUrl(company: Company): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function mapCompanyRow(row: CompanyRow): Company {
+  return {
+    id: row.id,
+    name: row.name,
+    industry: row.industry ?? "",
+    website: row.website ?? "",
+    phone: row.phone ?? "",
+    address: [row.address_city, row.address_province]
+      .filter(Boolean)
+      .join(", "),
+    notes: "",
+    logoUrl: row.logo_url ?? undefined,
+    companySize: row.company_size ?? undefined,
+    emailDomain: row.email_domain ?? undefined,
+    addressCity: row.address_city ?? undefined,
+    addressProvince: row.address_province ?? undefined,
+    addressCountry: row.address_country ?? undefined,
+    ownerId: row.owner_id ?? undefined,
+    annualRevenue: row.annual_revenue ?? undefined,
+    isArchived: row.is_archived,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? "",
+    lastModifiedAt: row.updated_at,
+    lastModifiedBy: "",
+  };
+}
+
+function companyUpdateFields(
+  updates: Partial<Company>
+): Partial<CompanyRow> {
+  const fields: Partial<CompanyRow> = {};
+  if (updates.name !== undefined) fields.name = updates.name as string;
+  if (updates.industry !== undefined)
+    fields.industry = updates.industry as string;
+  if (updates.website !== undefined) fields.website = updates.website as string;
+  if (updates.phone !== undefined) fields.phone = updates.phone as string;
+  if (updates.logoUrl !== undefined)
+    fields.logo_url = updates.logoUrl as string | null;
+  if (updates.addressCity !== undefined)
+    fields.address_city = updates.addressCity as string | null;
+  if (updates.addressProvince !== undefined)
+    fields.address_province = updates.addressProvince as string | null;
+  return fields;
 }
 
 const CompanyNameCell = createAvatarNameCell<Company>(
@@ -33,7 +90,6 @@ const COLUMN_WIDTHS: Record<string, number> = {
   website: 180,
   phone: 140,
   address: 200,
-  notes: 220,
   createdAt: 130,
   createdBy: 130,
   lastModifiedAt: 150,
@@ -41,7 +97,12 @@ const COLUMN_WIDTHS: Record<string, number> = {
   actions: 44,
 };
 
-const AUDIT_HIDDEN_COLUMNS = ["createdAt", "createdBy", "lastModifiedAt", "lastModifiedBy"];
+const AUDIT_HIDDEN_COLUMNS = [
+  "createdAt",
+  "createdBy",
+  "lastModifiedAt",
+  "lastModifiedBy",
+];
 
 export default function CompaniesGrid({
   onRowClick,
@@ -50,10 +111,19 @@ export default function CompaniesGrid({
   onRowClick?: (row: Company) => void;
   toolbarExtra?: React.ReactNode;
 }) {
-  const { companies, addCompany, updateCompany, deleteCompanies } =
-    useCompaniesStore();
+  const {
+    data: rows,
+    isLoading,
+    error,
+    refetch,
+  } = useCompanyList();
+  const createCompany = useCreateCompany();
+  const updateCompany = useUpdateCompany();
+  const archiveCompany = useArchiveCompany();
 
-  const columns: ColumnDef<Company, any>[] = [
+  const companies: Company[] = (rows ?? []).map(mapCompanyRow);
+
+  const columns: ColumnDef<Company, unknown>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -95,14 +165,6 @@ export default function CompaniesGrid({
       meta: { cellType: "longtext" as const, dataType: "text" as const },
     },
     {
-      accessorKey: "notes",
-      header: "Notes",
-      size: COLUMN_WIDTHS.notes,
-      cell: LongTextCell,
-      enableColumnFilter: false,
-      meta: { cellType: "longtext" as const, dataType: "text" as const },
-    },
-    {
       accessorKey: "createdAt",
       header: "Created",
       size: COLUMN_WIDTHS.createdAt,
@@ -116,9 +178,10 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.createdBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
     {
       accessorKey: "lastModifiedAt",
@@ -134,11 +197,16 @@ export default function CompaniesGrid({
       size: COLUMN_WIDTHS.lastModifiedBy,
       enableColumnFilter: false,
       meta: { cellType: "readonly" as const, dataType: "text" as const },
-      cell: ({ getValue }: { getValue: () => string }) => (
-        <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{getValue() || "\u2014"}</div>
-      ),
+      cell: (cellCtx) => {
+        const val = cellCtx.getValue() as string;
+        return <div className="flex h-full w-full items-center px-2 text-sm text-muted-foreground">{val || "\u2014"}</div>;
+      },
     },
   ];
+
+  if (isLoading) return <GridSkeleton />;
+  if (error)
+    return <QueryError message={error.message} onRetry={() => refetch()} />;
 
   return (
     <DataGrid<Company>
@@ -148,19 +216,26 @@ export default function CompaniesGrid({
       entityName="Companies"
       entityIcon={Building2}
       onAdd={() =>
-        addCompany({
+        createCompany.mutate({
           name: "",
-          industry: "",
-          website: "",
-          phone: "",
-          address: "",
-          notes: "",
+          industry: null,
+          company_size: null,
+          website: null,
+          phone: null,
+          email_domain: null,
+          address_city: null,
+          address_province: null,
+          address_country: "Indonesia",
+          logo_url: null,
+          owner_id: null,
+          annual_revenue: null,
+          created_by: null,
         })
       }
       onUpdate={(id, updates) =>
-        updateCompany(id, updates as Partial<Company>)
+        updateCompany.mutate({ id, ...companyUpdateFields(updates) })
       }
-      onDelete={deleteCompanies}
+      onDelete={(ids) => ids.forEach((id) => archiveCompany.mutate(id))}
       onRowClick={onRowClick}
       toolbarExtra={toolbarExtra}
       addLabel="Add Company"

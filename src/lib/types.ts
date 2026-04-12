@@ -22,6 +22,17 @@ export type Contact = AuditFields & {
   notes: string;
   linkedinUrl?: string;
   profileImageUrl?: string;
+  // DB fields
+  firstName?: string;
+  lastName?: string;
+  phonePrimary?: string;
+  phoneSecondary?: string;
+  whatsapp?: string;
+  department?: string;
+  avatarUrl?: string;
+  customFields?: Record<string, unknown>;
+  isArchived?: boolean;
+  ownerId?: string;
 };
 
 // ── Company ─────────────────────────────────────────────────────────────────
@@ -34,6 +45,16 @@ export type Company = AuditFields & {
   address: string;
   notes: string;
   logoUrl?: string;
+  // DB fields
+  companySize?: "1-10" | "11-50" | "51-200" | "201-500" | "500+";
+  emailDomain?: string;
+  addressCity?: string;
+  addressProvince?: string;
+  addressCountry?: string;
+  ownerId?: string;
+  annualRevenue?: number;
+  customFields?: Record<string, unknown>;
+  isArchived?: boolean;
 };
 
 // ── Lead ────────────────────────────────────────────────────────────────────
@@ -56,6 +77,15 @@ export type Lead = AuditFields & {
   companyId: string | null;
   estimatedValue: number;
   notes: string;
+  // DB fields
+  priority?: "low" | "medium" | "high";
+  lastContactedAt?: string;
+  nextFollowUpAt?: string;
+  customFields?: Record<string, unknown>;
+  isArchived?: boolean;
+  convertedAt?: string;
+  convertedDealId?: string;
+  ownerId?: string;
 };
 
 // ── Deal ────────────────────────────────────────────────────────────────────
@@ -76,6 +106,18 @@ export type Deal = AuditFields & {
   probability: number;
   expectedCloseDate: string;
   notes: string;
+  // DB fields
+  pipelineId?: string;
+  stageId?: string;
+  currency?: string;
+  actualCloseDate?: string;
+  lostReason?: string;
+  leadSource?: string;
+  customFields?: Record<string, unknown>;
+  isArchived?: boolean;
+  ownerId?: string;
+  stageChangedAt?: string;
+  dealStatus?: "open" | "won" | "lost" | "on_hold";
 };
 
 // ── Task ────────────────────────────────────────────────────────────────────
@@ -92,6 +134,13 @@ export type Task = AuditFields & {
   linkedEntityType: EntityType | null;
   linkedEntityId: string | null;
   assignee: string;
+  // DB fields
+  entityType?: "lead" | "deal" | "contact" | "company";
+  entityId?: string;
+  assigneeId?: string;
+  dueTime?: string;
+  completedAt?: string;
+  taskType?: "call" | "whatsapp" | "meeting" | "email" | "follow_up" | "other";
 };
 
 // ── Note ────────────────────────────────────────────────────────────────────
@@ -138,4 +187,90 @@ export type Attachment = {
   linkedEntityId: string;
   createdAt: string;
   createdBy: string;
+};
+
+// ── Supabase-backed types ────────────────────────────────────────────────────
+
+export type UserRole = "admin" | "sales" | "viewer";
+
+export type UserProfile = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  avatarUrl?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PipelineStage = {
+  id: string;
+  pipelineId: string;
+  name: string;
+  orderIndex: number;
+  defaultProbability: number;
+  color?: string;
+  isWonStage: boolean;
+  isLostStage: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Pipeline = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  stages?: PipelineStage[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Tag = {
+  id: string;
+  name: string;
+  color: string;
+  entityTypes: string[];
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmComment = {
+  id: string;
+  body: string;
+  entityType: "lead" | "deal" | "contact" | "company";
+  entityId: string;
+  parentCommentId?: string;
+  authorId?: string;
+  mentionedUserIds: string[];
+  isEdited: boolean;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ActivityLog = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  actorId?: string;
+  action: string;
+  fieldChanged?: string;
+  oldValue?: string;
+  newValue?: string;
+  createdAt: string;
+};
+
+export type Notification = {
+  id: string;
+  recipientId: string;
+  type: string;
+  entityType?: string;
+  entityId?: string;
+  body: string;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
 };

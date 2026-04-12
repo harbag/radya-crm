@@ -61,7 +61,7 @@ type DataGridProps<T extends { id: string }> = {
   columnWidths: Record<string, number>;
   entityName: string;
   entityIcon: LucideIcon;
-  onAdd?: () => string;
+  onAdd?: () => string | void;
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
   onDelete: (ids: string[]) => void;
   onRowClick?: (row: T) => void;
@@ -869,10 +869,12 @@ export default function DataGrid<T extends { id: string }>({
                   (userColumns[0]?.id as string) ??
                   ((userColumns[0] as any)?.accessorKey as string) ??
                   "";
-                setTimeout(() => {
-                  setSelectedCell({ rowId: id, columnId: firstCol });
-                  setEditingCell({ rowId: id, columnId: firstCol });
-                }, 30);
+                if (id) {
+                  setTimeout(() => {
+                    setSelectedCell({ rowId: id, columnId: firstCol });
+                    setEditingCell({ rowId: id, columnId: firstCol });
+                  }, 30);
+                }
               }}
               className="h-8 gap-1.5 text-xs"
             >
@@ -1160,10 +1162,12 @@ export default function DataGrid<T extends { id: string }>({
                 (userColumns[0]?.id as string) ??
                 ((userColumns[0] as any)?.accessorKey as string) ??
                 "";
-              setTimeout(() => {
-                setSelectedCell({ rowId: id, columnId: firstCol });
-                setEditingCell({ rowId: id, columnId: firstCol });
-              }, 30);
+              if (id) {
+                setTimeout(() => {
+                  setSelectedCell({ rowId: id, columnId: firstCol });
+                  setEditingCell({ rowId: id, columnId: firstCol });
+                }, 30);
+              }
             }}
             className="flex w-full items-center gap-2 border-b border-border/50 px-[88px] py-2 text-xs text-muted-foreground/70 transition-colors hover:bg-muted hover:text-muted-foreground"
             style={{ minWidth: tableMinWidth }}
