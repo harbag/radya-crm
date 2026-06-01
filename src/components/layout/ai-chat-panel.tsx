@@ -13,7 +13,6 @@ import ChatMessageBubble from "./chat-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageSquare, X, Send, Trash2 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function AIChatPanel() {
   const { messages, isOpen, toggle, addMessage, clear } = useChatStore();

@@ -4,7 +4,7 @@ import React from "react";
 import type { CellContext } from "@tanstack/react-table";
 import { useAttachmentsStore } from "@/store/use-attachments-store";
 import type { EntityType } from "@/lib/types";
-import { Paperclip, Image as ImageIcon } from "lucide-react";
+import { Paperclip } from "lucide-react";
 
 export function createAttachmentCell<T extends { id: string }>(
   entityType: EntityType

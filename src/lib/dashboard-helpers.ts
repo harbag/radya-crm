@@ -1,5 +1,4 @@
 import type { Deal, Company } from "./types";
-import { formatCurrency } from "./mock-data";
 
 export function calculateWinRate(deals: Deal[]): number {
   const closedWon = deals.filter((d) => d.stage === "closed_won").length;

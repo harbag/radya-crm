@@ -43,7 +43,6 @@ import {
   Layers,
   ArrowUpDown,
   X,
-  EyeOff,
   WrapText,
   type LucideIcon,
 } from "lucide-react";
@@ -58,7 +57,7 @@ export type RowAction<T> = {
 
 type DataGridProps<T extends { id: string }> = {
   data: T[];
-  columns: ColumnDef<T, any>[];
+  columns: ColumnDef<T, unknown>[];
   columnWidths: Record<string, number>;
   entityName: string;
   entityIcon: LucideIcon;
@@ -77,6 +76,16 @@ type DataGridProps<T extends { id: string }> = {
 };
 
 const SYSTEM_COLS = new Set(["select", "rowNum", "actions"]);
+
+/** Safely read an accessorKey off a column def (only AccessorKeyColumnDef has it). */
+function getAccessorKey<T>(
+  col: ColumnDef<T, unknown> | undefined
+): string | undefined {
+  if (col && "accessorKey" in col && typeof col.accessorKey === "string") {
+    return col.accessorKey;
+  }
+  return undefined;
+}
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function DataGrid<T extends { id: string }>({
@@ -196,7 +205,7 @@ export default function DataGrid<T extends { id: string }>({
   const fieldInfos: FieldInfo[] = useMemo(
     () =>
       userColumns.map((col, idx) => {
-        const id = (col as any).accessorKey ?? col.id ?? "";
+        const id = getAccessorKey(col) ?? col.id ?? "";
         return {
           id,
           label: typeof col.header === "string" ? col.header : id,
@@ -210,7 +219,7 @@ export default function DataGrid<T extends { id: string }>({
   const userColumnIds = useMemo(
     () =>
       userColumns
-        .map((col) => (col as any).accessorKey ?? col.id)
+        .map((col) => getAccessorKey(col) ?? col.id)
         .filter(Boolean) as string[],
     [userColumns]
   );
@@ -220,9 +229,8 @@ export default function DataGrid<T extends { id: string }>({
     () =>
       userColumns
         .map((col) => {
-          const id =
-            (col as any).accessorKey ?? col.id;
-          const meta = col.meta as any;
+          const id = getAccessorKey(col) ?? col.id;
+          const meta = col.meta;
           if (!id || !meta?.dataType) return null;
           return {
             id,
@@ -247,10 +255,10 @@ export default function DataGrid<T extends { id: string }>({
   const sortableColumns = useMemo(
     () =>
       userColumns
-        .filter((col) => (col as any).accessorKey && col.enableSorting !== false)
+        .filter((col) => getAccessorKey(col) && col.enableSorting !== false)
         .map((col) => ({
-          id: (col as any).accessorKey as string,
-          label: typeof col.header === "string" ? col.header : ((col as any).accessorKey as string),
+          id: getAccessorKey(col) as string,
+          label: typeof col.header === "string" ? col.header : (getAccessorKey(col) as string),
         })),
     [userColumns]
   );
@@ -258,16 +266,16 @@ export default function DataGrid<T extends { id: string }>({
   const groupableColumns = useMemo(
     () =>
       userColumns
-        .filter((col) => (col as any).accessorKey)
+        .filter((col) => getAccessorKey(col))
         .map((col) => ({
-          id: (col as any).accessorKey as string,
-          label: typeof col.header === "string" ? col.header : ((col as any).accessorKey as string),
+          id: getAccessorKey(col) as string,
+          label: typeof col.header === "string" ? col.header : (getAccessorKey(col) as string),
         })),
     [userColumns]
   );
 
   // Build full column list: select + rowNum + user columns + actions
-  const columns: ColumnDef<T, any>[] = [
+  const columns: ColumnDef<T, unknown>[] = [
     {
       id: "select",
       size: columnWidths.select ?? 40,
@@ -410,10 +418,10 @@ export default function DataGrid<T extends { id: string }>({
 
   function getGroupDisplayValue(value: string): string {
     if (!groupBy) return value;
-    const col = userColumns.find((c) => (c as any).accessorKey === groupBy);
-    const meta = col?.meta as any;
+    const col = userColumns.find((c) => getAccessorKey(c) === groupBy);
+    const meta = col?.meta;
     if (meta?.selectOptions) {
-      return (meta.selectOptions.find((o: any) => o.value === value)?.label ?? value) || "—";
+      return (meta.selectOptions.find((o) => o.value === value)?.label ?? value) || "—";
     }
     if (meta?.dataType === "date") {
       return value
@@ -520,7 +528,7 @@ export default function DataGrid<T extends { id: string }>({
 
   function getCellType(columnId: string): CellType {
     const col = table.getColumn(columnId);
-    return (col?.columnDef.meta as any)?.cellType ?? "readonly";
+    return col?.columnDef.meta?.cellType ?? "readonly";
   }
 
   // ── commitEdit callback ─────────────────────────────────────────────────
@@ -933,7 +941,7 @@ export default function DataGrid<T extends { id: string }>({
                 const id = onAdd();
                 const firstCol =
                   (userColumns[0]?.id as string) ??
-                  ((userColumns[0] as any)?.accessorKey as string) ??
+                  (getAccessorKey(userColumns[0]) as string) ??
                   "";
                 if (id) {
                   setTimeout(() => {
@@ -1238,7 +1246,7 @@ export default function DataGrid<T extends { id: string }>({
               const id = onAdd();
               const firstCol =
                 (userColumns[0]?.id as string) ??
-                ((userColumns[0] as any)?.accessorKey as string) ??
+                (getAccessorKey(userColumns[0]) as string) ??
                 "";
               if (id) {
                 setTimeout(() => {

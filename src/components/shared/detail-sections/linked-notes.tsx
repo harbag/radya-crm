@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { Note, EntityType } from "@/lib/types";
+import type { Note } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";

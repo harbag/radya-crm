@@ -414,6 +414,9 @@ export default function WbsGrid(props: WbsGridProps) {
   const columns = useMemo(() => buildColumns(handlers), [handlers])
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // React Compiler can't memoize TanStack Table's returned functions; this is a
+  // known library limitation (the existing shared DataGrid uses it the same way).
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: rows,
     columns,

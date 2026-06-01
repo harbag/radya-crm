@@ -35,8 +35,6 @@ import {
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   formatCurrency,
-  DEAL_STAGE_CONFIG,
-  LEAD_STATUS_CONFIG,
   TASK_STATUS_CONFIG,
 } from "@/lib/mock-data";
 import type { EntityType, Note, Task, Deal } from "@/lib/types";

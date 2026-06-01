@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import type { EntityType, Attachment } from "@/lib/types";
 import {
   Upload,
-  X,
   FileText,
   Image as ImageIcon,
   ExternalLink,
@@ -26,12 +25,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
-}
-
-function getFileIcon(type: string) {
-  if (type.startsWith("image/")) return ImageIcon;
-  if (type === "google_drive_link") return FolderOpen;
-  return FileText;
 }
 
 export default function AttachmentManager({
@@ -202,7 +195,6 @@ function AttachmentRow({
   onDelete: () => void;
   onPreview?: () => void;
 }) {
-  const Icon = getFileIcon(attachment.type);
   const isLink = attachment.type === "google_drive_link";
   const isImage = attachment.type.startsWith("image/");
 
@@ -223,7 +215,13 @@ function AttachmentRow({
         </button>
       ) : (
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-zinc-100 dark:bg-zinc-800">
-          <Icon className="h-4 w-4 text-zinc-500" />
+          {isImage ? (
+            <ImageIcon className="h-4 w-4 text-zinc-500" />
+          ) : isLink ? (
+            <FolderOpen className="h-4 w-4 text-zinc-500" />
+          ) : (
+            <FileText className="h-4 w-4 text-zinc-500" />
+          )}
         </div>
       )}
 

@@ -5,7 +5,7 @@ import ViewSwitcher, { type ViewType } from "@/components/shared/view-switcher";
 import LeadsGrid from "./leads-grid";
 import LeadCard from "./lead-card";
 import KanbanBoard from "@/components/shared/kanban-board";
-import { useLeadList, useUpdateLead, useCreateLead, type LeadRow } from "@/lib/queries/leads";
+import { useLeadList, useUpdateLead, type LeadRow } from "@/lib/queries/leads";
 import { useCreateDeal } from "@/lib/queries/deals";
 import { usePipelines, useStages } from "@/lib/queries/pipelines";
 import {

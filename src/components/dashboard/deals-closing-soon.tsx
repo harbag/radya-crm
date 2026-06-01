@@ -7,6 +7,10 @@ import type { Deal } from "@/lib/types";
 import { formatCurrency, DEAL_STAGE_CONFIG } from "@/lib/mock-data";
 
 export default function DealsClosingSoon({ deals }: { deals: Deal[] }) {
+  // Current time for the relative "days until close" label. Reading the clock
+  // at render is intentional — it only feeds a derived display value.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -23,7 +27,7 @@ export default function DealsClosingSoon({ deals }: { deals: Deal[] }) {
           <div className="space-y-3">
             {deals.map((deal) => {
               const daysUntil = Math.ceil(
-                (new Date(deal.expectedCloseDate).getTime() - Date.now()) /
+                (new Date(deal.expectedCloseDate).getTime() - now) /
                   (1000 * 60 * 60 * 24)
               );
               const stageConfig = DEAL_STAGE_CONFIG[deal.stage];

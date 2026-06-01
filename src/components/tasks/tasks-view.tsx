@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import ViewSwitcher, { type ViewType } from "@/components/shared/view-switcher";
-import TasksGrid from "./tasks-grid";
 import TaskCard from "./task-card";
 import KanbanBoard from "@/components/shared/kanban-board";
 import CalendarView from "@/components/shared/calendar-view";

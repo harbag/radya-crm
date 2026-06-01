@@ -7,7 +7,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Dialog,
@@ -63,18 +62,19 @@ export function EditableTextCell<T extends { id: string }>({
   const savedRef = useRef(false);
 
   if (isEditing) {
-    // Read and clear initial char (for type-to-edit)
-    const initialChar = initialCharRef.current;
-    initialCharRef.current = null;
-
     return (
       <input
         className="h-full w-full bg-background px-2 text-sm outline-none"
-        defaultValue={initialChar ?? value}
+        defaultValue={value}
         autoFocus
         ref={(el) => {
-          if (el && initialChar) {
-            // Place cursor at end when type-to-edit
+          if (!el) return;
+          // Apply the type-to-edit initial char here: reading/clearing the ref
+          // in the ref callback runs at commit time, not during render.
+          const initialChar = initialCharRef.current;
+          initialCharRef.current = null;
+          if (initialChar) {
+            el.value = initialChar;
             el.setSelectionRange(el.value.length, el.value.length);
           }
         }}
@@ -273,15 +273,17 @@ export function LongTextCell<T extends { id: string }>({
   }, [expandedValue, value, onUpdate, row.original.id, column.id]);
 
   if (isEditing && !expandedOpen) {
-    const initialChar = initialCharRef.current;
-    initialCharRef.current = null;
     return (
       <input
         className="h-full w-full bg-background px-2 text-sm outline-none"
-        defaultValue={initialChar ?? value}
+        defaultValue={value}
         autoFocus
         ref={(el) => {
-          if (el && initialChar) {
+          if (!el) return;
+          const initialChar = initialCharRef.current;
+          initialCharRef.current = null;
+          if (initialChar) {
+            el.value = initialChar;
             el.setSelectionRange(el.value.length, el.value.length);
           }
         }}
@@ -491,15 +493,17 @@ export function createAvatarNameCell<T extends { id: string }>(
     const imageUrl = getImageUrl(row.original);
 
     if (isEditing) {
-      const initialChar = initialCharRef.current;
-      initialCharRef.current = null;
       return (
         <input
           className="h-full w-full bg-background px-2 text-sm outline-none"
-          defaultValue={initialChar ?? value}
+          defaultValue={value}
           autoFocus
           ref={(el) => {
-            if (el && initialChar) {
+            if (!el) return;
+            const initialChar = initialCharRef.current;
+            initialCharRef.current = null;
+            if (initialChar) {
+              el.value = initialChar;
               el.setSelectionRange(el.value.length, el.value.length);
             }
           }}

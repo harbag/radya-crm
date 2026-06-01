@@ -19,7 +19,6 @@ import {
   Circle,
   Loader2,
   StickyNote,
-  Plus,
   ListTodo,
 } from "lucide-react";
 

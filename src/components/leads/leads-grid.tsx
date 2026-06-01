@@ -6,7 +6,6 @@ import { Target } from "lucide-react";
 import DataGrid from "@/components/shared/data-grid";
 import {
   EditableTextCell,
-  LongTextCell,
   createStatusBadgeCell,
   DateTimeCell,
   CurrencyCell,
