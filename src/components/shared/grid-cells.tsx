@@ -37,6 +37,8 @@ declare module "@tanstack/react-table" {
     onUpdate: (id: string, updates: Record<string, unknown>) => void;
     commitEdit: (action: "enter" | "tab" | "shift-tab" | "escape") => void;
     initialCharRef: React.MutableRefObject<string | null>;
+    /** When true, text cells wrap to multiple lines (top-aligned) instead of truncating. */
+    wrapText?: boolean;
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -53,7 +55,7 @@ export function EditableTextCell<T extends { id: string }>({
   column,
   table,
 }: CellContext<T, string>) {
-  const { editingCell, onUpdate, commitEdit, initialCharRef } =
+  const { editingCell, onUpdate, commitEdit, initialCharRef, wrapText } =
     table.options.meta!;
   const isEditing =
     editingCell?.rowId === row.id && editingCell?.columnId === column.id;
@@ -112,9 +114,18 @@ export function EditableTextCell<T extends { id: string }>({
 
   // Display mode — no onClick, selection handled by <td>
   return (
-    <div className="flex h-full w-full cursor-default items-center px-2 text-sm">
+    <div
+      className={cn(
+        "flex h-full w-full cursor-default px-2 text-sm",
+        wrapText ? "items-start py-1.5" : "items-center"
+      )}
+    >
       {value ? (
-        <span className="truncate">{value}</span>
+        <span
+          className={wrapText ? "whitespace-normal break-words line-clamp-3" : "truncate"}
+        >
+          {value}
+        </span>
       ) : (
         <span className="text-zinc-300">&mdash;</span>
       )}
@@ -236,7 +247,7 @@ export function LongTextCell<T extends { id: string }>({
   column,
   table,
 }: CellContext<T, string>) {
-  const { editingCell, onUpdate, commitEdit, initialCharRef } =
+  const { editingCell, onUpdate, commitEdit, initialCharRef, wrapText } =
     table.options.meta!;
   const isEditing =
     editingCell?.rowId === row.id && editingCell?.columnId === column.id;
@@ -309,9 +320,21 @@ export function LongTextCell<T extends { id: string }>({
 
   return (
     <>
-      <div className="group/longtext flex h-full w-full cursor-default items-center px-2 text-sm">
+      <div
+        className={cn(
+          "group/longtext flex h-full w-full cursor-default px-2 text-sm",
+          wrapText ? "items-start py-1.5" : "items-center"
+        )}
+      >
         {value ? (
-          <span className="flex-1 truncate whitespace-pre-line line-clamp-1">
+          <span
+            className={cn(
+              "flex-1",
+              wrapText
+                ? "whitespace-normal break-words line-clamp-3"
+                : "truncate whitespace-pre-line line-clamp-1"
+            )}
+          >
             {value}
           </span>
         ) : (

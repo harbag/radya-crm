@@ -44,6 +44,7 @@ import {
   ArrowUpDown,
   X,
   EyeOff,
+  WrapText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -103,6 +104,15 @@ export default function DataGrid<T extends { id: string }>({
     for (const [k, v] of Object.entries(columnWidths)) {
       sizing[k] = v;
     }
+    // Merge any user-resized widths persisted for this entity.
+    if (typeof window !== "undefined") {
+      try {
+        const saved = window.localStorage.getItem(`dg:colw:${entityName}`);
+        if (saved) Object.assign(sizing, JSON.parse(saved));
+      } catch {
+        /* ignore corrupt storage */
+      }
+    }
     return sizing;
   });
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -111,6 +121,14 @@ export default function DataGrid<T extends { id: string }>({
       vis[col] = false;
     }
     return vis;
+  });
+  const [wrapText, setWrapText] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(`dg:wrap:${entityName}`) === "1";
+    } catch {
+      return false;
+    }
   });
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<EditingCell | null>(null);
@@ -128,6 +146,28 @@ export default function DataGrid<T extends { id: string }>({
   const sortPanelRef = useRef<HTMLDivElement>(null);
   const initialCharRef = useRef<string | null>(null);
   const prevRowCountRef = useRef<number>(0);
+
+  // Persist column widths + wrap-text preference per entity.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        `dg:colw:${entityName}`,
+        JSON.stringify(columnSizing)
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [columnSizing, entityName]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`dg:wrap:${entityName}`, wrapText ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [wrapText, entityName]);
 
   // Click-outside handlers for sort/group panels
   useEffect(() => {
@@ -341,6 +381,7 @@ export default function DataGrid<T extends { id: string }>({
       onUpdate,
       commitEdit,
       initialCharRef,
+      wrapText,
     },
   });
 
@@ -394,9 +435,19 @@ export default function DataGrid<T extends { id: string }>({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 36,
+    estimateSize: () => (wrapText ? 72 : 36),
     overscan: 10,
+    // Measure real row heights only when wrapping (variable height); otherwise
+    // the fixed 36px estimate is exact and avoids measurement overhead.
+    measureElement: wrapText
+      ? (el) => el?.getBoundingClientRect().height ?? 36
+      : undefined,
   });
+
+  // Reset cached measurements when toggling wrap so heights recompute.
+  useEffect(() => {
+    virtualizer.measure();
+  }, [wrapText, virtualizer]);
 
   const virtualRows = virtualizer.getVirtualItems();
   const totalHeight = virtualizer.getTotalSize();
@@ -664,6 +715,21 @@ export default function DataGrid<T extends { id: string }>({
             columnVisibility={columnVisibility}
             onColumnVisibilityChange={setColumnVisibility}
           />
+
+          {/* Wrap text toggle */}
+          <button
+            onClick={() => setWrapText((v) => !v)}
+            title={wrapText ? "Disable text wrapping" : "Wrap cell text"}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+              wrapText
+                ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                : "border-border bg-background text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <WrapText className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Wrap</span>
+          </button>
 
           {/* Sort builder */}
           {sortableColumns.length > 0 && (
@@ -1002,7 +1068,7 @@ export default function DataGrid<T extends { id: string }>({
                             row.getIsSelected() ? "bg-indigo-50" : "hover:bg-muted/70",
                             onRowClick && "cursor-pointer"
                           )}
-                          style={{ height: 36 }}
+                          style={wrapText ? undefined : { height: 36 }}
                           onClick={() => onRowClick?.(row.original)}
                         >
                           {row.getVisibleCells().map((cell) => {
@@ -1019,7 +1085,12 @@ export default function DataGrid<T extends { id: string }>({
                                 data-row={row.id}
                                 data-col={cell.column.id}
                                 className={cn(
-                                  "h-9 overflow-hidden border-r border-border/50 p-0",
+                                  "border-r border-border/50 p-0",
+                                  wrapText
+                                    ? isSystemCol
+                                      ? "align-middle"
+                                      : "align-top"
+                                    : "h-9 overflow-hidden",
                                   isEditing && "ring-2 ring-inset ring-indigo-500",
                                   isSelected && !isEditing && "ring-2 ring-inset ring-indigo-400 bg-indigo-50/30",
                                   isSystemCol && "text-center"
@@ -1068,12 +1139,14 @@ export default function DataGrid<T extends { id: string }>({
                   return (
                     <tr
                       key={row.id}
+                      data-index={virtualRow.index}
+                      ref={wrapText ? virtualizer.measureElement : undefined}
                       className={cn(
                         "group border-b border-border/50 transition-colors",
                         row.getIsSelected() ? "bg-indigo-50" : "hover:bg-muted/70",
                         onRowClick && "cursor-pointer"
                       )}
-                      style={{ height: 36 }}
+                      style={wrapText ? undefined : { height: 36 }}
                       onClick={() => onRowClick?.(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => {
@@ -1091,7 +1164,12 @@ export default function DataGrid<T extends { id: string }>({
                             data-row={row.id}
                             data-col={cell.column.id}
                             className={cn(
-                              "h-9 overflow-hidden border-r border-border/50 p-0",
+                              "border-r border-border/50 p-0",
+                              wrapText
+                                ? isSystemCol
+                                  ? "align-middle"
+                                  : "align-top"
+                                : "h-9 overflow-hidden",
                               isEditing && "ring-2 ring-inset ring-indigo-500",
                               isSelected &&
                                 !isEditing &&
