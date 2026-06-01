@@ -8,6 +8,7 @@ import {
   Building2,
   Target,
   CheckSquare,
+  GanttChartSquare,
   LayoutDashboard,
   PanelLeftClose,
   PanelLeft,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/leads", label: "Leads", icon: Target },
   { href: "/deals", label: "Deals", icon: KanbanSquare },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
+  { href: "/projects", label: "Projects", icon: GanttChartSquare },
 ];
 
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
