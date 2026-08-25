@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [sessionReady, setSessionReady] = useState(false)
@@ -15,6 +14,7 @@ export default function UpdatePasswordPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const supabase = createClient()
     let active = true
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -66,7 +66,7 @@ export default function UpdatePasswordPage() {
       active = false
       listener.subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -83,6 +83,7 @@ export default function UpdatePasswordPage() {
 
     setLoading(true)
     try {
+      const supabase = createClient()
       const { error: updateError } = await supabase.auth.updateUser({ password })
       if (updateError) throw updateError
       await supabase.auth.signOut()
